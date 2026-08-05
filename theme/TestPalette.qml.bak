@@ -1,0 +1,20 @@
+import QtQuick
+import Quickshell.Io
+
+QtObject {
+    id: root
+
+    FileView {
+        id: palette
+
+        path: "/home/viraj/.cache/wallust/quickshell.json"
+        blockLoading: true
+        watchChanges: true
+
+        onFileChanged: reload()
+    }
+
+    readonly property var json: JSON.parse(palette.text())
+
+    readonly property string bg: json.background
+}
