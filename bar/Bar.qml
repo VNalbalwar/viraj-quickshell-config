@@ -57,10 +57,9 @@ PanelWindow {
         implicitWidth: expanded ? 680 : 180
         implicitHeight: expanded ? 120 : 40
 
-        // Rounded screen-edge entrance: the notch itself hangs from the
-        // top edge, so the upper corners are deliberately more pronounced.
-        topLeftRadius: expanded ? 24 : 18
-        topRightRadius: expanded ? 24 : 18
+        // Flat against the screen at the top; only the bottom is rounded.
+        topLeftRadius: 0
+        topRightRadius: 0
         bottomLeftRadius: expanded ? 28 : 12
         bottomRightRadius: expanded ? 28 : 12
         color: "#000000"
