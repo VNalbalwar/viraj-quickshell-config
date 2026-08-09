@@ -170,8 +170,8 @@ PanelWindow {
             Rectangle {
                 id: artworkContainer
 
-                width: 72
-                height: 72
+                width: 100
+                height: 80
 
                 anchors {
                     left: parent.left
@@ -503,10 +503,10 @@ PanelWindow {
                                 text: weekDays[index]
 
                                 color: Colors.fg
-                                opacity: 0.28
+                                opacity: 0.40
 
                                 font {
-                                    pixelSize: 8
+                                    pixelSize: 9
                                     weight: Font.Medium
                                 }
                             }
