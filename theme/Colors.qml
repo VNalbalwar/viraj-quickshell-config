@@ -63,4 +63,9 @@ Singleton {
     readonly property color colBrightPurple: root.palette.color13 || "#d3869b"
     readonly property color colBrightCyan: root.palette.color14 || "#89b482"
     readonly property color colBrightWhite: root.palette.color15 || "#d4be98"
+
+    // Bar / UI aliases
+    readonly property color bg1: colBg
+    readonly property color fg: colFg
+    readonly property color grey2: colBrightBlack
 }
