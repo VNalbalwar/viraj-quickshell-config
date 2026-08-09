@@ -40,6 +40,36 @@ PanelWindow {
     readonly property bool mediaPlaying: hasMedia && mediaPlayer.isPlaying
 
     // ─────────────────────────────────────────────────────────────
+    // Calendar helpers
+    // ─────────────────────────────────────────────────────────────
+
+    readonly property var weekDays: [
+        "S", "M", "T", "W", "T", "F", "S"
+    ]
+
+    readonly property int todayIndex: {
+        return new Date(clock.date).getDay()
+    }
+
+    readonly property var weekDates: {
+        var today = new Date(clock.date)
+        var day = today.getDay()
+
+        var sunday = new Date(today)
+        sunday.setDate(today.getDate() - day)
+
+        var result = []
+
+        for (var i = 0; i < 7; i++) {
+            var d = new Date(sunday)
+            d.setDate(sunday.getDate() + i)
+            result.push(d.getDate())
+        }
+
+        return result
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // Main island
     // ─────────────────────────────────────────────────────────────
 
@@ -54,19 +84,21 @@ PanelWindow {
 
         property bool expanded: hover.hovered
 
-        // Collapsed = your original pill
-        // Expanded = media card
-        implicitWidth: expanded ? 420 : 150
-        implicitHeight: expanded ? 150 : 34
+        implicitWidth: expanded ? 680 : 150
+        implicitHeight: expanded ? 116 : 40
 
-        radius: Math.min(height / 2, 26)
+        radius: Math.min(height / 2, 28)
         color: Colors.bg1
 
         Behavior on implicitWidth {
             NumberAnimation {
                 duration: 500
                 easing.type: Easing.Bezier
-                easing.bezierCurve: [0.38, 1.21, 0.22, 1, 1, 1]
+                easing.bezierCurve: [
+                    0.38, 1.21,
+                    0.22, 1,
+                    1, 1
+                ]
             }
         }
 
@@ -74,7 +106,11 @@ PanelWindow {
             NumberAnimation {
                 duration: 500
                 easing.type: Easing.Bezier
-                easing.bezierCurve: [0.38, 1.21, 0.22, 1, 1, 1]
+                easing.bezierCurve: [
+                    0.38, 1.21,
+                    0.22, 1,
+                    1, 1
+                ]
             }
         }
 
@@ -91,6 +127,7 @@ PanelWindow {
             precision: SystemClock.Minutes
         }
 
+        // Collapsed clock
         Text {
             anchors.centerIn: parent
 
@@ -112,7 +149,7 @@ PanelWindow {
         }
 
         // ─────────────────────────────────────────────────────────
-        // Expanded media card
+        // Expanded content
         // ─────────────────────────────────────────────────────────
 
         Item {
@@ -126,23 +163,26 @@ PanelWindow {
                 }
             }
 
+            // =====================================================
             // Album artwork
+            // =====================================================
+
             Rectangle {
                 id: artworkContainer
 
-                width: 94
-                height: 94
+                width: 72
+                height: 72
 
                 anchors {
                     left: parent.left
-                    leftMargin: 18
+                    leftMargin: 16
                     top: parent.top
                     topMargin: 18
                 }
 
-                radius: 16
+                radius: 14
 
-                color: Colors.bg1
+                color: Colors.alpha(Colors.colFg, 0.06)
 
                 clip: true
 
@@ -173,23 +213,28 @@ PanelWindow {
                     opacity: 0.35
 
                     font {
-                        pixelSize: 32
+                        pixelSize: 28
                         weight: Font.DemiBold
                     }
                 }
             }
 
+            // =====================================================
             // Song information
+            // =====================================================
+
             Column {
+                id: songInfo
+
                 anchors {
                     left: artworkContainer.right
                     leftMargin: 14
-                    right: parent.right
-                    rightMargin: 18
                     top: artworkContainer.top
+                    right: calendar.left
+                    rightMargin: 16
                 }
 
-                spacing: 5
+                spacing: 3
 
                 Text {
                     width: parent.width
@@ -219,193 +264,306 @@ PanelWindow {
 
                     elide: Text.ElideRight
 
-                    font.pixelSize: 13
+                    font {
+                        pixelSize: 13
+                    }
                 }
             }
 
-            // ─────────────────────────────────────────────────────
+            // =====================================================
             // Playback controls
-            // ─────────────────────────────────────────────────────
+            // =====================================================
 
-        Row {
-            anchors {
-                bottom: parent.bottom
-                bottomMargin: 14
-                horizontalCenter: parent.horizontalCenter
+            Row {
+                anchors {
+                    left: songInfo.left
+                    bottom: parent.bottom
+                    bottomMargin: 13
+                }
+
+                spacing: 7
+
+                // ─────────────────────────────────────────────
+                // Previous
+                // ─────────────────────────────────────────────
+
+                Rectangle {
+                    width: 34
+                    height: 34
+                    radius: 17
+
+                    color: previousHover.hovered
+                           ? Colors.alpha(Colors.colFg, 0.13)
+                           : Colors.alpha(Colors.colFg, 0.05)
+
+                    scale: previousHover.hovered ? 1.08 : 1.0
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 120
+                        }
+                    }
+
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 150
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+
+                        text: "󰒮"
+
+                        color: Colors.fg
+
+                        font {
+                            pixelSize: 18
+                            weight: Font.Medium
+                        }
+                    }
+
+                    HoverHandler {
+                        id: previousHover
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+
+                        onClicked: {
+                            if (mediaPlayer &&
+                                mediaPlayer.canGoPrevious)
+                                mediaPlayer.previous()
+                        }
+                    }
+                }
+
+                // ─────────────────────────────────────────────
+                // Play / Pause
+                // ─────────────────────────────────────────────
+
+                Rectangle {
+                    width: 40
+                    height: 40
+                    radius: 20
+
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    color: playHover.hovered
+                           ? Colors.alpha(Colors.colBlue, 0.32)
+                           : Colors.alpha(Colors.colBlue, 0.20)
+
+                    scale: playHover.hovered ? 1.08 : 1.0
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 120
+                        }
+                    }
+
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 150
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+
+                        text: mediaPlaying
+                              ? "󰏤"
+                              : "󰐊"
+
+                        color: Colors.fg
+
+                        font {
+                            pixelSize: 20
+                            weight: Font.DemiBold
+                        }
+                    }
+
+                    HoverHandler {
+                        id: playHover
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+
+                        onClicked: {
+                            if (mediaPlayer &&
+                                mediaPlayer.canTogglePlaying)
+                                mediaPlayer.togglePlaying()
+                        }
+                    }
+                }
+
+                // ─────────────────────────────────────────────
+                // Next
+                // ─────────────────────────────────────────────
+
+                Rectangle {
+                    width: 34
+                    height: 34
+                    radius: 17
+
+                    color: nextHover.hovered
+                           ? Colors.alpha(Colors.colFg, 0.13)
+                           : Colors.alpha(Colors.colFg, 0.05)
+
+                    scale: nextHover.hovered ? 1.08 : 1.0
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 120
+                        }
+                    }
+
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 150
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+
+                        text: "󰒭"
+
+                        color: Colors.fg
+
+                        font {
+                            pixelSize: 18
+                            weight: Font.Medium
+                        }
+                    }
+
+                    HoverHandler {
+                        id: nextHover
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+
+                        onClicked: {
+                            if (mediaPlayer &&
+                                mediaPlayer.canGoNext)
+                                mediaPlayer.next()
+                        }
+                    }
+                }
             }
 
-            spacing: 10
+            // =====================================================
+            // Clock + calendar
+            // =====================================================
 
-            // Previous
-            Rectangle {
-                width: 42
-                height: 42
-                radius: 21
+            Column {
+                id: calendar
 
-                color: previousHover.hovered
-                    ? Colors.alpha(Colors.colFg, 0.14)
-                    : Colors.alpha(Colors.colFg, 0.06)
-
-                scale: previousHover.hovered ? 1.08 : 1.0
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 120
-                    }
+                anchors {
+                    right: parent.right
+                    rightMargin: 22
+                    top: parent.top
+                    topMargin: 17
                 }
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: 150
-                        easing.type: Easing.OutCubic
-                    }
-                }
+                spacing: 5
 
+                // Big time
                 Text {
-                    anchors.centerIn: parent
+                    anchors.horizontalCenter: parent.horizontalCenter
 
-                    text: "󰒮"
+                    text: Qt.formatDateTime(clock.date, "HH:mm")
+
                     color: Colors.fg
 
                     font {
-                        pixelSize: 21
-                        weight: Font.Medium
-                    }
-                }
-
-                HoverHandler {
-                    id: previousHover
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-
-                    onClicked: {
-                        if (mediaPlayer && mediaPlayer.canGoPrevious)
-                            mediaPlayer.previous()
-                    }
-                }
-            }
-
-            // Play / Pause
-            Rectangle {
-                width: 48
-                height: 48
-                radius: 24
-
-                color: playHover.hovered
-                    ? Colors.alpha(Colors.colBlue, 0.28)
-                    : Colors.alpha(Colors.colBlue, 0.18)
-
-                scale: playHover.hovered ? 1.08 : 1.0
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 120
-                    }
-                }
-
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: 150
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                Text {
-                    anchors.centerIn: parent
-
-                    text: mediaPlaying ? "󰏤" : "󰐊"
-
-                    color: Colors.fg
-
-                    font {
-                        pixelSize: 23
+                        pixelSize: 20
                         weight: Font.DemiBold
                     }
                 }
 
-                HoverHandler {
-                    id: playHover
-                }
+                // Seven day calendar
+                Row {
+                    spacing: 5
 
-                MouseArea {
-                    anchors.fill: parent
+                    Repeater {
+                        model: 7
 
-                    onClicked: {
-                        if (mediaPlayer && mediaPlayer.canTogglePlaying)
-                            mediaPlayer.togglePlaying()
+                        delegate: Column {
+                            width: 15
+                            spacing: 2
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+
+                                text: weekDays[index]
+
+                                color: Colors.fg
+                                opacity: 0.28
+
+                                font {
+                                    pixelSize: 8
+                                    weight: Font.Medium
+                                }
+                            }
+
+                            Rectangle {
+                                width: 15
+                                height: 15
+                                radius: 7.5
+
+                                color: index === todayIndex
+                                       ? Colors.colBlue
+                                       : "transparent"
+
+                                Text {
+                                    anchors.centerIn: parent
+
+                                    text: weekDates[index]
+
+                                    color: index === todayIndex
+                                           ? Colors.bg1
+                                           : Colors.fg
+
+                                    opacity: index === todayIndex
+                                             ? 1.0
+                                             : 0.28
+
+                                    font {
+                                        pixelSize: 8
+                                        weight: Font.Medium
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            // Next
-            Rectangle {
-                width: 42
-                height: 42
-                radius: 21
+            // =====================================================
+            // Spotify label
+            // =====================================================
 
-                color: nextHover.hovered
-                    ? Colors.alpha(Colors.colFg, 0.14)
-                    : Colors.alpha(Colors.colFg, 0.06)
-
-                scale: nextHover.hovered ? 1.08 : 1.0
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 120
-                    }
-                }
-
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: 150
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                Text {
-                    anchors.centerIn: parent
-
-                    text: "󰒭"
-                    color: Colors.fg
-
-                    font {
-                        pixelSize: 21
-                        weight: Font.Medium
-                    }
-                }
-
-                HoverHandler {
-                    id: nextHover
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-
-                    onClicked: {
-                        if (mediaPlayer && mediaPlayer.canGoNext)
-                            mediaPlayer.next()
-                    }
-                }
-            }
-        }
-
-            // Spotify indicator
             Text {
                 anchors {
                     right: parent.right
                     bottom: parent.bottom
-                    rightMargin: 18
-                    bottomMargin: 18
+                    rightMargin: 17
+                    bottomMargin: 10
                 }
 
                 text: mediaPlayer ? "Spotify" : ""
 
                 color: Colors.grey2
-                opacity: 0.5
+                opacity: 0.45
 
-                font.pixelSize: 9
+                font {
+                    pixelSize: 8
+                }
             }
         }
     }
