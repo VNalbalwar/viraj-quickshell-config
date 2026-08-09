@@ -57,11 +57,13 @@ PanelWindow {
         implicitWidth: expanded ? 680 : 180
         implicitHeight: expanded ? 120 : 40
 
-        // Flat against the screen at the top; only the bottom is rounded.
+        // iPhone-style notch: completely flat at the screen edge,
+        // with no rounding on the top corners. The lower corners
+        // sweep into a deep, smooth rounded U-shape.
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: expanded ? 28 : 12
-        bottomRightRadius: expanded ? 28 : 12
+        bottomLeftRadius: expanded ? 60 : 20
+        bottomRightRadius: expanded ? 60 : 20
         color: "#000000"
 
         Behavior on implicitWidth {
