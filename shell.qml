@@ -3,7 +3,7 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import QtQuick
 import Quickshell.Io
-import "./theme"
+import "./bar"
 import "./app_launcher"
 import "./wallpaper_switcher"
 
@@ -22,6 +22,15 @@ ShellRoot {
         model: Quickshell.screens
 
         WallpaperSwitcher {
+            property var modelData
+            screen: modelData
+        }
+    }
+
+    Variants {
+        model: Quickshell.screens
+
+        Bar {
             property var modelData
             screen: modelData
         }

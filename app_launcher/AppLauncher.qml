@@ -106,9 +106,9 @@ PanelWindow {
     }
 
     // ── Accent colours ─────────────────────────────────────────────────────
-    readonly property color accentFill: Qt.rgba(Colors.colBlue.r, Colors.colBlue.g, Colors.colBlue.b, 0.18)
-    readonly property color accentIcon: Qt.rgba(Colors.colBlue.r, Colors.colBlue.g, Colors.colBlue.b, 0.28)
-    readonly property color fgDim: Qt.rgba(Colors.colFg.r, Colors.colFg.g, Colors.colFg.b, 0.65)
+    property color accentFill: Colors.alpha(Colors.colBlue, 0.18)
+    property color accentIcon: Colors.alpha(Colors.colBlue, 0.28)
+    property color fgDim: Colors.alpha(Colors.colFg, 0.65)
 
     // ── Panel geometry ─────────────────────────────────────────────────────
     readonly property int maxVisible: 7
@@ -143,12 +143,12 @@ PanelWindow {
         anchors.bottom: parent.bottom
 
         // Semi-translucent frosted panel
-        color: Qt.rgba(Colors.colBg.r, Colors.colBg.g, Colors.colBg.b, 0.8)
+        color: Colors.colBg
         topLeftRadius: 18
         topRightRadius: 18
         bottomLeftRadius: 0
         bottomRightRadius: 0
-        border.color: Qt.alpha(Colors.colFg, 0.10)
+        border.color: Colors.alpha(Colors.colFg, 0.10)
         border.width: 1
 
         // Slide up / down
@@ -407,7 +407,7 @@ PanelWindow {
                                         width: recentLabel.width + 8
                                         height: 14
                                         radius: 4
-                                        color: Qt.rgba(Colors.colBlue.r, Colors.colBlue.g, Colors.colBlue.b, 0.22)
+                                        color: Colors.alpha(Colors.colBlue, 0.22)
                                         anchors.verticalCenter: parent.verticalCenter
 
                                         Text {
