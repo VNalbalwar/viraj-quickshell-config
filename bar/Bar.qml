@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Services.Mpris
 import QtQuick
+import Quickshell.Widgets
 import "../theme"
 
 PanelWindow {
@@ -54,8 +55,8 @@ PanelWindow {
         clip: true
 
         property bool expanded: hover.hovered
-        implicitWidth: expanded ? 680 : 180
-        implicitHeight: expanded ? 120 : 40
+        implicitWidth: expanded ? 680 : 200
+        implicitHeight: expanded ? 130 : 44
 
         // iPhone-style notch: flat at the screen edge with a restrained,
         // smooth curve only along the bottom edge.
@@ -92,7 +93,7 @@ PanelWindow {
             opacity: island.expanded ? 0 : 1
             text: Qt.formatDateTime(clock.date, "hh:mm")
             color: Colors.fg
-            font { pixelSize: 14; weight: 600 }
+            font { pixelSize: 16; weight: 600 }
             Behavior on opacity { NumberAnimation { duration: 150 } }
         }
 
@@ -106,17 +107,24 @@ PanelWindow {
                 width: 100
                 height: 80
                 anchors { left: parent.left; leftMargin: 16; top: parent.top; topMargin: 18 }
-                radius: 14
+                radius: 10
                 color: Colors.alpha(Colors.colFg, 0.06)
-                clip: true
-                Image {
+
+                // Using the official Quickshell widget to strictly clip the image inside the radius
+                ClippingRectangle {
                     anchors.fill: parent
-                    source: mediaPlayer && mediaPlayer.trackArtUrl ? mediaPlayer.trackArtUrl : ""
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    cache: true
-                    visible: status === Image.Ready
+                    radius: parent.radius
+
+                    Image {
+                        anchors.fill: parent
+                        source: mediaPlayer && mediaPlayer.trackArtUrl ? mediaPlayer.trackArtUrl : ""
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        cache: true
+                        visible: status === Image.Ready
+                    }
                 }
+
                 Text {
                     anchors.centerIn: parent
                     visible: !mediaPlayer || !mediaPlayer.trackArtUrl
@@ -126,6 +134,7 @@ PanelWindow {
                     font { pixelSize: 28; weight: Font.DemiBold }
                 }
             }
+
 
             Column {
                 id: songInfo
@@ -161,7 +170,7 @@ PanelWindow {
                     MouseArea { anchors.fill: parent; onClicked: if (mediaPlayer && mediaPlayer.canGoPrevious) mediaPlayer.previous() }
                 }
                 Rectangle {
-                    width: 40; height: 40; radius: 20
+                    width: 34; height: 34; radius: 20
                     anchors.verticalCenter: parent.verticalCenter
                     color: playHover.hovered ? Colors.alpha(Colors.colBlue, 0.32) : Colors.alpha(Colors.colBlue, 0.20)
                     scale: playHover.hovered ? 1.08 : 1.0
@@ -196,7 +205,7 @@ PanelWindow {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Qt.formatDateTime(clock.date, "HH:mm")
                     color: Colors.fg
-                    font { pixelSize: 20; weight: Font.DemiBold }
+                    font { pixelSize: 26; weight: Font.DemiBold }
                 }
                 Row {
                     spacing: 5
