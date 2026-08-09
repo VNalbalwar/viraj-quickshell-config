@@ -57,11 +57,12 @@ PanelWindow {
         implicitWidth: expanded ? 680 : 180
         implicitHeight: expanded ? 120 : 40
 
-        // Subtle curve where the notch meets the screen edge.
-        topLeftRadius: 13
-        topRightRadius: 13
-        bottomLeftRadius: 28
-        bottomRightRadius: 28
+        // Mac-style notch curve: subtle at the screen edge,
+        // deeper and softer at the bottom when expanded.
+        topLeftRadius: 10
+        topRightRadius: 10
+        bottomLeftRadius: expanded ? 28 : 12
+        bottomRightRadius: expanded ? 28 : 12
         color: "#000000"
 
         Behavior on implicitWidth {
