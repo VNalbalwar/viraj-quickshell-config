@@ -128,21 +128,24 @@ PanelWindow {
                 Text {
                     anchors.centerIn: parent
                     visible: !mediaPlayer || !mediaPlayer.trackArtUrl
-                    text: "♫"
-                    color: Colors.fg
-                    opacity: 0.35
-                    font { pixelSize: 28; weight: Font.DemiBold }
+                    text: "󰓇"
+                    color: "#1ED760"
+                    opacity: 1.0
+                    font {
+                        pixelSize: 38
+                        family: "JetBrainsMono Nerd Font"
+                    }
                 }
             }
 
 
             Column {
                 id: songInfo
-                anchors { left: artworkContainer.right; leftMargin: 14; top: artworkContainer.top; right: calendar.left; rightMargin: 16 }
+                anchors { left: artworkContainer.right; leftMargin: 16; top: artworkContainer.top; right: calendar.left; rightMargin: 16 }
                 spacing: 3
                 Text {
                     width: parent.width
-                    text: mediaPlayer ? (mediaPlayer.trackTitle || "Unknown Title") : "Nothing playing"
+                    text: mediaPlayer ? (mediaPlayer.trackTitle || "Unknown Title") : "Nothing !"
                     color: Colors.fg
                     elide: Text.ElideRight
                     font { pixelSize: 17; weight: Font.DemiBold }
@@ -157,7 +160,7 @@ PanelWindow {
             }
 
             Row {
-                anchors { left: songInfo.left; bottom: parent.bottom; bottomMargin: 13 }
+                anchors { left: songInfo.left; bottom: parent.bottom; bottomMargin: 25 }
                 spacing: 7
                 Rectangle {
                     width: 34; height: 34; radius: 17
@@ -199,37 +202,37 @@ PanelWindow {
 
             Column {
                 id: calendar
-                anchors { right: parent.right; rightMargin: 22; top: parent.top; topMargin: 17 }
-                spacing: 5
+                anchors { right: parent.right; rightMargin: 22; top: parent.top; topMargin: 22 }
+                spacing: 10
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: Qt.formatDateTime(clock.date, "HH:mm")
                     color: Colors.fg
-                    font { pixelSize: 26; weight: Font.DemiBold }
+                    font { pixelSize: 27; weight: Font.DemiBold }
                 }
                 Row {
-                    spacing: 5
+                    spacing: 18
                     Repeater {
                         model: 7
                         delegate: Column {
-                            width: 15
+                            width: 20
                             spacing: 2
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: weekDays[index]
                                 color: Colors.fg
                                 opacity: 0.40
-                                font { pixelSize: 9; weight: Font.Medium }
+                                font { pixelSize: 14; weight: Font.Medium }
                             }
                             Rectangle {
-                                width: 15; height: 15; radius: 7.5
-                                color: index === todayIndex ? Colors.colBlue : "transparent"
+                                width: 20; height: 20; radius: 9
+                                color: index === todayIndex ? "#7DCFFF" : "transparent"
                                 Text {
                                     anchors.centerIn: parent
                                     text: weekDates[index]
                                     color: index === todayIndex ? "#000000" : Colors.fg
                                     opacity: index === todayIndex ? 1.0 : 0.28
-                                    font { pixelSize: 8; weight: Font.Medium }
+                                    font { pixelSize: 11; weight: Font.Medium }
                                 }
                             }
                         }
