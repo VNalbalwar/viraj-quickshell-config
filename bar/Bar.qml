@@ -271,5 +271,88 @@ PanelWindow {
                 font { pixelSize: 8 }
             }
         }
+
+        Item {
+            id: wallpaperView
+
+            anchors.fill: parent
+            visible: wallpaperMode
+            opacity: wallpaperMode ? 1 : 0
+
+            Behavior on opacity {
+                NumberAnimation { duration: 180 }
+            }
+
+            Text {
+                anchors {
+                    left: parent.left
+                    top: parent.top
+                    leftMargin: 24
+                    topMargin: 18
+                }
+
+                text: "Wallpaper"
+                color: Colors.fg
+                font {
+                    pixelSize: 16
+                    weight: Font.DemiBold
+                }
+            }
+
+            ListView {
+                id: wallpaperList
+
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                    bottomMargin: 18
+                }
+
+                height: 105
+
+                orientation: ListView.Horizontal
+                spacing: 12
+
+                model: WallpaperState.wallpapers
+
+                delegate: Rectangle {
+                    width: 145
+                    height: 90
+                    radius: 14
+                    clip: true
+
+                    color: Colors.alpha(Colors.colFg, 0.06)
+
+                    Image {
+                        anchors.fill: parent
+
+                        source: "file://" + modelData
+
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        cache: true
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+
+                        onClicked: {
+                            WallpaperState.selectedIndex = index
+                            WallpaperState.selectAndApply()
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+
+                        color: "transparent"
+                        border.width: index === WallpaperState.selectedIndex ? 3 : 0
+                        border.color: Colors.colBlue
+                        radius: parent.radius
+                    }
+                }
+            }
+        }
     }
 }
