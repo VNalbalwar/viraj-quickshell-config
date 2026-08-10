@@ -1,6 +1,7 @@
 pragma Singleton
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.UPower
 import QtQuick
 
 Singleton {
@@ -17,6 +18,9 @@ Singleton {
 
     property int battery: 0
     property string batteryState: "unknown"
+    property bool batteryInitialized: false
+
+    readonly property var batteryDevice: UPower.displayDevice
 
     function readBrightness() {
         brightnessProcess.running = true
@@ -30,8 +34,29 @@ Singleton {
         micMuteProcess.running = true
     }
 
+    function updateBattery() {
+        var device = root.batteryDevice
+
+        if (!device || !device.ready)
+            return
+
+        root.battery = Math.round(device.percentage)
+
+        if (device.state === UPowerDeviceState.Charging ||
+            device.state === UPowerDeviceState.PendingCharge) {
+            root.batteryState = "charging"
+        } else if (device.state === UPowerDeviceState.FullyCharged) {
+            root.batteryState = "fully-charged"
+        } else if (device.state === UPowerDeviceState.Discharging ||
+                   device.state === UPowerDeviceState.PendingDischarge) {
+            root.batteryState = "discharging"
+        } else {
+            root.batteryState = "unknown"
+        }
+    }
+
     function readBattery() {
-        batteryProcess.running = true
+        updateBattery()
     }
 
     function showVolume() {
@@ -50,7 +75,7 @@ Singleton {
 
     function showBattery() {
         root.mode = "battery"
-        readBattery()
+        updateBattery()
         root.visible = true
         hideTimer.restart()
     }
@@ -82,7 +107,26 @@ Singleton {
 
     Component.onCompleted: {
         readBrightness()
-        readBattery()
+        updateBattery()
+        batteryInitialized = true
+    }
+
+    Connections {
+        target: root.batteryDevice
+
+        function onPercentageChanged() {
+            root.updateBattery()
+
+            if (root.batteryInitialized)
+                root.showBattery()
+        }
+
+        function onStateChanged() {
+            root.updateBattery()
+
+            if (root.batteryInitialized)
+                root.showBattery()
+        }
     }
 
     Process {
@@ -136,29 +180,6 @@ Singleton {
             onRead: data => {
                 var output = data.trim()
                 root.micMuted = output.indexOf("[MUTED]") !== -1
-            }
-        }
-    }
-
-    Process {
-        id: batteryProcess
-
-        command: ["upower", "-i", "/org/freedesktop/UPower/devices/battery_BAT1"]
-
-        stdout: SplitParser {
-            onRead: data => {
-                var output = data.trim()
-
-                var percentageMatch = output.match(/percentage:\s*([0-9]+)%/)
-                if (percentageMatch) {
-                    var percentage = parseInt(percentageMatch[1])
-                    if (!isNaN(percentage))
-                        root.battery = percentage
-                }
-
-                var stateMatch = output.match(/state:\s*([^\n]+)/)
-                if (stateMatch)
-                    root.batteryState = stateMatch[1].trim()
             }
         }
     }
