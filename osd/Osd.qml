@@ -1,71 +1,44 @@
 import Quickshell
-import Quickshell.Wayland
 import QtQuick
 import "../theme"
 
-PanelWindow {
-    property var screen
+Item {
+    anchors.fill: parent
+    visible: OsdState.visible
+    opacity: OsdState.visible ? 1 : 0
+    scale: OsdState.visible ? 1 : 0.92
+    y: OsdState.visible ? 0 : -8
+    transformOrigin: Item.Top
+    z: 100
 
-    anchors {
-        top: true
-        left: true
-        right: true
+    Behavior on opacity {
+        NumberAnimation {
+            duration: 220
+            easing.type: Easing.OutCubic
+        }
     }
 
-    exclusionMode: ExclusionMode.Ignore
-    focusable: false
-    color: "transparent"
-    implicitHeight: 110
-
-    WlrLayershell.layer: WlrLayer.Overlay
-
-    Rectangle {
-        id: osdPill
-
-        width: 260
-        height: 58
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.topMargin: 42
-
-        radius: 29
-        color: "#000000"
-        antialiasing: true
-
-        opacity: OsdState.visible ? 1 : 0
-        scale: OsdState.visible ? 1 : 0.88
-        y: OsdState.visible ? 0 : -12
-        transformOrigin: Item.Top
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 220
-                easing.type: Easing.OutCubic
-            }
+    Behavior on scale {
+        NumberAnimation {
+            duration: 280
+            easing.type: Easing.OutCubic
         }
+    }
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: 300
-                easing.type: Easing.OutCubic
-            }
+    Behavior on y {
+        NumberAnimation {
+            duration: 280
+            easing.type: Easing.OutCubic
         }
+    }
 
-        Behavior on y {
-            NumberAnimation {
-                duration: 300
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        Text {
-            anchors.centerIn: parent
-            text: "OSD"
-            color: Colors.fg
-            font {
-                pixelSize: 15
-                weight: Font.DemiBold
-            }
+    Text {
+        anchors.centerIn: parent
+        text: "OSD"
+        color: Colors.fg
+        font {
+            pixelSize: 15
+            weight: Font.DemiBold
         }
     }
 }
