@@ -43,12 +43,6 @@ Singleton {
     property string wifiIcon: "󰤨"
     property bool wifiInitialized: false
 
-    property bool bluetoothPowered: false
-    property bool bluetoothConnected: false
-    property string bluetoothName: ""
-    property string bluetoothIcon: "󰂯"
-    property bool bluetoothInitialized: false
-
     readonly property var batteryDevice: UPower.displayDevice
 
     function readBrightness() { brightnessProcess.running = true }
@@ -155,26 +149,11 @@ Singleton {
         if (changed) root.showWifi()
     }
 
-    function updateBluetooth() { if (!bluetoothProcess.running) bluetoothProcess.running = true }
-    function handleBluetooth(data) {
-        var parts = data.trim().split("|")
-        if (parts.length < 3) return
-        var powered = parts[0] === "yes"
-        var connected = parts[1] === "yes"
-        var name = parts.slice(2).join("|").trim()
-        var changed = root.bluetoothInitialized && (root.bluetoothPowered !== powered || root.bluetoothConnected !== connected || root.bluetoothName !== name)
-        root.bluetoothPowered = powered; root.bluetoothConnected = connected; root.bluetoothName = name
-        root.bluetoothIcon = connected ? "󰂯" : (powered ? "󰂯" : "󰂲")
-        if (!root.bluetoothInitialized) { root.bluetoothInitialized = true; return }
-        if (changed) root.showBluetooth()
-    }
-
     function showLock(type) { root.mode = "lock"; root.lockType = type; root.visible = true; hideTimer.restart() }
     function showAudioOutput() { root.mode = "audio-output"; root.visible = true; hideTimer.restart() }
     function showPerformance() { root.mode = "performance"; root.visible = true; hideTimer.restart() }
     function showFanMode() { root.mode = "fan"; root.visible = true; hideTimer.restart() }
     function showWifi() { root.mode = "wifi"; root.visible = true; hideTimer.restart() }
-    function showBluetooth() { root.mode = "bluetooth"; root.visible = true; hideTimer.restart() }
     function showVolume() { root.mode = "volume"; readVolume(); root.visible = true; hideTimer.restart() }
     function showMic() { root.mode = "mic"; readMicMute(); root.visible = true; hideTimer.restart() }
     function showBattery() { root.mode = "battery"; updateBattery(); root.visible = true; hideTimer.restart() }
@@ -184,7 +163,7 @@ Singleton {
     function toggle() { if (root.visible) hide(); else show() }
 
     Component.onCompleted: {
-        readBrightness(); updateBattery(); updateLocks(); updateAudioOutput(); updatePerformanceProfile(); updateFanMode(); updateWifi(); updateBluetooth()
+        readBrightness(); updateBattery(); updateLocks(); updateAudioOutput(); updatePerformanceProfile(); updateFanMode(); updateWifi()
     }
 
     Connections {
@@ -206,7 +185,6 @@ Singleton {
         stdout: SplitParser { onRead: data => root.handleWifi(data) }
     }
 
-    Process { id: bluetoothProcess; command: ["sh", "-c", "powered=$(bluetoothctl show 2>/dev/null | awk -F': ' '/Powered:/{print $2; exit}'); line=$(bluetoothctl devices Connected 2>/dev/null | head -n1); if [ -n \"$line\" ]; then name=${line#* * }; printf '%s|yes|%s\\n' \"$powered\" \"$name\"; else printf '%s|no|\\n' \"$powered\"; fi"]; stdout: SplitParser { onRead: data => root.handleBluetooth(data) } }
     Process { id: lockProcess; command: ["sh", "-c", "hyprctl devices -j | jq -c '.keyboards[] | select(.main == true) | {capsLock, numLock}'"]; stdout: SplitParser { onRead: data => { try { var keyboard = JSON.parse(data.trim()); var newCaps = !!keyboard.capsLock; var newNum = !!keyboard.numLock; if (!root.lockInitialized) { root.capsLock = newCaps; root.numLock = newNum; root.lockInitialized = true; return } if (newCaps !== root.capsLock) { root.capsLock = newCaps; root.showLock("caps") } if (newNum !== root.numLock) { root.numLock = newNum; root.showLock("num") } } catch (error) { console.log("Failed to parse keyboard lock state:", error) } } } }
 
     Timer { id: lockTimer; interval: 250; repeat: true; running: true; onTriggered: root.updateLocks() }
@@ -214,7 +192,6 @@ Singleton {
     Timer { id: performanceTimer; interval: 500; repeat: true; running: true; onTriggered: root.updatePerformanceProfile() }
     Timer { id: fanTimer; interval: 500; repeat: true; running: true; onTriggered: root.updateFanMode() }
     Timer { id: wifiTimer; interval: 1000; repeat: true; running: true; onTriggered: root.updateWifi() }
-    Timer { id: bluetoothTimer; interval: 1000; repeat: true; running: true; onTriggered: root.updateBluetooth() }
     Timer { id: hideTimer; interval: 1800; repeat: false; onTriggered: root.visible = false }
 
     IpcHandler {
@@ -230,6 +207,5 @@ Singleton {
         function showPerformance(): void { root.updatePerformanceProfile(); root.showPerformance() }
         function showFanMode(): void { root.updateFanMode(); root.showFanMode() }
         function showWifi(): void { root.updateWifi(); root.showWifi() }
-        function showBluetooth(): void { root.updateBluetooth(); root.showBluetooth() }
     }
 }
