@@ -8,15 +8,15 @@ import "./app_launcher"
 import "./wallpaper_switcher"
 
 ShellRoot {
-    // ── App launcher (slides up from bottom center) ────────────────────────
-    Variants {
-        model: Quickshell.screens
-
-        AppLauncher {
-            property var modelData
-            screen: modelData
-        }
-    }
+    // ── Original standalone app launcher kept as a safety fallback ─────────
+    // Variants {
+    //     model: Quickshell.screens
+    //
+    //     AppLauncher {
+    //         property var modelData
+    //         screen: modelData
+    //     }
+    // }
 
     // Variants {
     //     model: Quickshell.screens
