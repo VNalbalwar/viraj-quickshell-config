@@ -24,34 +24,38 @@ Item {
         Text {
             text: OsdState.mode === "audio-output"
                 ? OsdState.audioOutputIcon
-                : OsdState.mode === "lock"
-                    ? (OsdState.lockType === "caps" ? "⇪" : "󰎤")
-                    : OsdState.mode === "mic"
-                        ? "󰍬"
-                        : OsdState.mode === "battery"
-                            ? (
-                                OsdState.batteryState === "charging"
-                                    ? (OsdState.battery >= 90 ? "󰂋"
-                                        : OsdState.battery >= 80 ? "󰂊"
-                                        : OsdState.battery >= 60 ? "󰂉"
-                                        : OsdState.battery >= 40 ? "󰂈"
-                                        : OsdState.battery >= 30 ? "󰂇"
-                                        : OsdState.battery >= 20 ? "󰂆"
-                                        : "󰂄")
-                                    : OsdState.battery >= 90 ? "󰂂"
-                                        : OsdState.battery >= 80 ? "󰂁"
-                                        : OsdState.battery >= 70 ? "󰂀"
-                                        : OsdState.battery >= 60 ? "󰁿"
-                                        : OsdState.battery >= 50 ? "󰁾"
-                                        : OsdState.battery >= 40 ? "󰁽"
-                                        : OsdState.battery >= 30 ? "󰁼"
-                                        : OsdState.battery >= 20 ? "󰁻"
-                                        : OsdState.battery >= 10 ? "󰁺"
-                                        : "󰂎"
-                            )
-                            : OsdState.mode === "volume"
-                                ? (OsdState.muted ? "󰖁" : "󰕾")
-                                : "󰃠"
+                : OsdState.mode === "performance"
+                    ? "⚡"
+                    : OsdState.mode === "fan"
+                        ? "󰈐"
+                        : OsdState.mode === "lock"
+                            ? (OsdState.lockType === "caps" ? "⇪" : "󰎤")
+                            : OsdState.mode === "mic"
+                                ? "󰍬"
+                                : OsdState.mode === "battery"
+                                    ? (
+                                        OsdState.batteryState === "charging"
+                                            ? (OsdState.battery >= 90 ? "󰂋"
+                                                : OsdState.battery >= 80 ? "󰂊"
+                                                : OsdState.battery >= 60 ? "󰂉"
+                                                : OsdState.battery >= 40 ? "󰂈"
+                                                : OsdState.battery >= 30 ? "󰂇"
+                                                : OsdState.battery >= 20 ? "󰂆"
+                                                : "󰂄")
+                                            : OsdState.battery >= 90 ? "󰂂"
+                                                : OsdState.battery >= 80 ? "󰂁"
+                                                : OsdState.battery >= 70 ? "󰂀"
+                                                : OsdState.battery >= 60 ? "󰁿"
+                                                : OsdState.battery >= 50 ? "󰁾"
+                                                : OsdState.battery >= 40 ? "󰁽"
+                                                : OsdState.battery >= 30 ? "󰁼"
+                                                : OsdState.battery >= 20 ? "󰁻"
+                                                : OsdState.battery >= 10 ? "󰁺"
+                                                : "󰂎"
+                                    )
+                                    : OsdState.mode === "volume"
+                                        ? (OsdState.muted ? "󰖁" : "󰕾")
+                                        : "󰃠"
             color: Colors.fg
             font {
                 pixelSize: 20
@@ -63,7 +67,9 @@ Item {
         Rectangle {
             visible: OsdState.mode !== "mic" &&
                      OsdState.mode !== "lock" &&
-                     OsdState.mode !== "audio-output"
+                     OsdState.mode !== "audio-output" &&
+                     OsdState.mode !== "performance" &&
+                     OsdState.mode !== "fan"
             width: 340
             height: 6
             radius: 3
@@ -94,19 +100,23 @@ Item {
         Text {
             text: OsdState.mode === "audio-output"
                 ? OsdState.audioOutputName
-                : OsdState.mode === "lock"
-                    ? (OsdState.lockType === "caps"
-                        ? (OsdState.capsLock ? "Caps Lock On" : "Caps Lock Off")
-                        : (OsdState.numLock ? "Num Lock On" : "Num Lock Off"))
-                    : OsdState.mode === "mic"
-                        ? (OsdState.micMuted ? "Microphone Muted" : "Microphone On")
-                        : OsdState.mode === "battery"
-                            ? (OsdState.batteryState === "fully-charged"
-                                ? "Fully Charged"
-                                : OsdState.battery + "%")
-                            : ((OsdState.mode === "volume"
-                                ? OsdState.volume
-                                : OsdState.brightness) + "%")
+                : OsdState.mode === "performance"
+                    ? OsdState.performanceLabel
+                    : OsdState.mode === "fan"
+                        ? OsdState.fanMode
+                        : OsdState.mode === "lock"
+                            ? (OsdState.lockType === "caps"
+                                ? (OsdState.capsLock ? "Caps Lock On" : "Caps Lock Off")
+                                : (OsdState.numLock ? "Num Lock On" : "Num Lock Off"))
+                            : OsdState.mode === "mic"
+                                ? (OsdState.micMuted ? "Microphone Muted" : "Microphone On")
+                                : OsdState.mode === "battery"
+                                    ? (OsdState.batteryState === "fully-charged"
+                                        ? "Fully Charged"
+                                        : OsdState.battery + "%")
+                                    : ((OsdState.mode === "volume"
+                                        ? OsdState.volume
+                                        : OsdState.brightness) + "%")
             color: Colors.fg
             font {
                 pixelSize: 13
