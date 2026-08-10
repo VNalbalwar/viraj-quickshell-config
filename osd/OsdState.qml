@@ -29,6 +29,7 @@ Singleton {
     property string audioOutputName: ""
     property string audioOutputIcon: "󰕾"
     property bool audioOutputInitialized: false
+    property int audioOutputId: -1
 
     readonly property var batteryDevice: UPower.displayDevice
     readonly property var audioSink: Pipewire.defaultAudioSink
@@ -73,33 +74,45 @@ Singleton {
     function updateAudioOutput() {
         var sink = root.audioSink
 
-        if (!Pipewire.ready || !sink || !sink.ready)
+        // PipeWire can briefly expose a null/unready default sink while a device
+        // is being unplugged or plugged back in. Leave the retry timer running so
+        // we catch the newly selected default sink once it is ready.
+        if (!Pipewire.ready || !sink || !sink.ready) {
+            audioOutputRetryTimer.restart()
             return
+        }
 
         var description = sink.description || sink.name || "Audio Output"
         var lower = description.toLowerCase()
+        var newName = description
+        var newIcon = "󰕾"
 
         if (lower.indexOf("hdmi") !== -1 || lower.indexOf("displayport") !== -1) {
-            root.audioOutputIcon = "󰍹"
-            root.audioOutputName = "HDMI / DisplayPort"
-        } else if (lower.indexOf("speaker") !== -1 || lower.indexOf("built-in") !== -1 || lower.indexOf("internal") !== -1) {
-            root.audioOutputIcon = "󰕾"
-            root.audioOutputName = "Speakers"
+            newIcon = "󰍹"
+            newName = "HDMI / DisplayPort"
+        } else if (lower.indexOf("speaker") !== -1 ||
+                   lower.indexOf("built-in") !== -1 ||
+                   lower.indexOf("internal") !== -1) {
+            newIcon = "󰕾"
+            newName = "Speakers"
         } else if (lower.indexOf("headphone") !== -1 ||
                    lower.indexOf("headset") !== -1 ||
                    lower.indexOf("buds") !== -1 ||
                    lower.indexOf("bluetooth") !== -1 ||
                    lower.indexOf("bluez") !== -1) {
-            root.audioOutputIcon = "󰋋"
-            root.audioOutputName = description
-        } else {
-            root.audioOutputIcon = "󰕾"
-            root.audioOutputName = description
+            newIcon = "󰋋"
         }
 
-        if (root.audioOutputInitialized)
+        var changed = root.audioOutputId !== sink.id
+
+        root.audioOutputIcon = newIcon
+        root.audioOutputName = newName
+        root.audioOutputId = sink.id
+        audioOutputRetryTimer.stop()
+
+        if (changed && root.audioOutputInitialized)
             root.showAudioOutput()
-        else
+        else if (!root.audioOutputInitialized)
             root.audioOutputInitialized = true
     }
 
@@ -200,6 +213,14 @@ Singleton {
         }
     }
 
+    Connections {
+        target: root.audioSink
+
+        function onReadyChanged() {
+            root.updateAudioOutput()
+        }
+    }
+
     Process {
         id: brightnessProcess
 
@@ -297,6 +318,13 @@ Singleton {
         repeat: true
         running: true
         onTriggered: root.updateLocks()
+    }
+
+    Timer {
+        id: audioOutputRetryTimer
+        interval: 100
+        repeat: false
+        onTriggered: root.updateAudioOutput()
     }
 
     Timer {
