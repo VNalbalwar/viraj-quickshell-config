@@ -15,6 +15,9 @@ Singleton {
 
     property bool micMuted: false
 
+    property int battery: 0
+    property string batteryState: "unknown"
+
     function readBrightness() {
         brightnessProcess.running = true
     }
@@ -27,6 +30,10 @@ Singleton {
         micMuteProcess.running = true
     }
 
+    function readBattery() {
+        batteryProcess.running = true
+    }
+
     function showVolume() {
         root.mode = "volume"
         readVolume()
@@ -37,6 +44,13 @@ Singleton {
     function showMic() {
         root.mode = "mic"
         readMicMute()
+        root.visible = true
+        hideTimer.restart()
+    }
+
+    function showBattery() {
+        root.mode = "battery"
+        readBattery()
         root.visible = true
         hideTimer.restart()
     }
@@ -66,7 +80,10 @@ Singleton {
             show()
     }
 
-    Component.onCompleted: readBrightness()
+    Component.onCompleted: {
+        readBrightness()
+        readBattery()
+    }
 
     Process {
         id: brightnessProcess
@@ -123,6 +140,29 @@ Singleton {
         }
     }
 
+    Process {
+        id: batteryProcess
+
+        command: ["upower", "-i", "/org/freedesktop/UPower/devices/battery_BAT1"]
+
+        stdout: SplitParser {
+            onRead: data => {
+                var output = data.trim()
+
+                var percentageMatch = output.match(/percentage:\s*([0-9]+)%/)
+                if (percentageMatch) {
+                    var percentage = parseInt(percentageMatch[1])
+                    if (!isNaN(percentage))
+                        root.battery = percentage
+                }
+
+                var stateMatch = output.match(/state:\s*([^\n]+)/)
+                if (stateMatch)
+                    root.batteryState = stateMatch[1].trim()
+            }
+        }
+    }
+
     Timer {
         id: hideTimer
         interval: 1800
@@ -139,5 +179,6 @@ Singleton {
         function hide(): void { root.hide() }
         function showVolume(): void { root.showVolume() }
         function showMic(): void { root.showMic() }
+        function showBattery(): void { root.showBattery() }
     }
 }
