@@ -177,8 +177,10 @@ Singleton {
         if (parts.length < 2)
             return
 
-        var connected = parts[0] === "100 (connected)"
+        var state = parts[0].trim()
+        var connected = state.indexOf("100 (connected)") === 0
         var name = parts.slice(1).join("|").trim()
+
         if (!connected)
             name = ""
 
@@ -319,7 +321,7 @@ Singleton {
 
     Process {
         id: wifiProcess
-        command: ["sh", "-c", "dev=$(nmcli -t -f DEVICE,TYPE dev | awk -F: '$2==\"wifi\"{print $1; exit}'); if [ -n \"$dev\" ]; then nmcli -t -f GENERAL.STATE,GENERAL.CONNECTION dev show \"$dev\" | paste -sd '|' -; else printf '0 (disconnected)|\\n'; fi"]
+        command: ["sh", "-c", "dev=$(nmcli -t -f DEVICE,TYPE dev | awk -F: '$2==\"wifi\"{print $1; exit}'); if [ -n \"$dev\" ]; then state=$(nmcli -t -f GENERAL.STATE dev show \"$dev\" | sed 's/^GENERAL.STATE://'); conn=$(nmcli -t -f GENERAL.CONNECTION dev show \"$dev\" | sed 's/^GENERAL.CONNECTION://'); printf '%s|%s\\n' \"$state\" \"$conn\"; else printf '0 (disconnected)|\\n'; fi"]
         stdout: SplitParser { onRead: data => root.handleWifi(data) }
     }
 
