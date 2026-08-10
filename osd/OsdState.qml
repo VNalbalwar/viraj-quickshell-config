@@ -201,27 +201,14 @@ Singleton {
     Process {
         id: lockProcess
 
-        command: ["hyprctl", "devices", "-j"]
+        // Emit one compact JSON object so SplitParser receives the complete
+        // payload in a single line instead of trying to parse multi-line JSON.
+        command: ["sh", "-c", "hyprctl devices -j | jq -c '.keyboards[] | select(.main == true) | {capsLock, numLock}'"]
 
         stdout: SplitParser {
             onRead: data => {
                 try {
-                    var devices = JSON.parse(data)
-                    var keyboards = devices.keyboards || []
-                    var keyboard = null
-
-                    for (var i = 0; i < keyboards.length; ++i) {
-                        if (keyboards[i].main) {
-                            keyboard = keyboards[i]
-                            break
-                        }
-                    }
-
-                    if (!keyboard && keyboards.length > 0)
-                        keyboard = keyboards[0]
-
-                    if (!keyboard)
-                        return
+                    var keyboard = JSON.parse(data.trim())
 
                     var newCaps = !!keyboard.capsLock
                     var newNum = !!keyboard.numLock
