@@ -9,8 +9,12 @@ Singleton {
     property bool visible: false
     property int brightness: 0
 
-    function show() {
+    function readBrightness() {
         brightnessProcess.running = true
+    }
+
+    function show() {
+        readBrightness()
         root.visible = true
         hideTimer.restart()
     }
@@ -21,7 +25,7 @@ Singleton {
     }
 
     function showBrightness() {
-        brightnessProcess.running = true
+        readBrightness()
         root.visible = true
         hideTimer.restart()
     }
@@ -32,7 +36,9 @@ Singleton {
         else
             show()
     }
-    
+
+    Component.onCompleted: readBrightness()
+
     Process {
         id: brightnessProcess
 
@@ -64,6 +70,7 @@ Singleton {
 
         function toggle(): void { root.toggle() }
         function show(): void { root.show() }
+        function showBrightness(): void { root.showBrightness() }
         function hide(): void { root.hide() }
     }
 }
