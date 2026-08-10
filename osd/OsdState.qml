@@ -96,10 +96,6 @@ Singleton {
     }
 
     function updateAudioOutput() {
-        // wpctl 1.6.8 reliably reports the currently default sink in the Sinks
-        // section with a leading '*'. Polling this is intentional: it also
-        // handles Bluetooth hotplug transitions where the default node can
-        // disappear briefly before the new default is selected.
         if (!audioOutputProcess.running)
             audioOutputProcess.running = true
     }
@@ -272,11 +268,18 @@ Singleton {
                 if (!line)
                     return
 
-                var match = line.match(/\\*\\s+(\\d+)\\.\\s+(.+?)\\s+\\[vol:/)
+                var starIndex = line.indexOf("*")
+                var dotIndex = line.indexOf(".", starIndex)
+                var volumeIndex = line.lastIndexOf(" [vol:")
 
-                if (match) {
-                    root.handleAudioOutput(match[1], match[2].trim())
-                }
+                if (starIndex === -1 || dotIndex === -1 || volumeIndex === -1)
+                    return
+
+                var id = line.slice(starIndex + 1, dotIndex).trim()
+                var description = line.slice(dotIndex + 1, volumeIndex).trim()
+
+                if (id && description)
+                    root.handleAudioOutput(id, description)
             }
         }
     }
