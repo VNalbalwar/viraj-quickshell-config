@@ -30,6 +30,15 @@ Singleton {
     property string audioOutputId: ""
     property bool audioOutputInitialized: false
 
+    property string performanceProfile: ""
+    property string performanceLabel: ""
+    property bool performanceInitialized: false
+
+    property int fanSpeedLeft: 0
+    property int fanSpeedRight: 0
+    property string fanMode: ""
+    property bool fanInitialized: false
+
     readonly property var batteryDevice: UPower.displayDevice
 
     function readBrightness() {
@@ -117,6 +126,90 @@ Singleton {
             root.showAudioOutput()
     }
 
+    function updatePerformanceProfile() {
+        if (!performanceProcess.running)
+            performanceProcess.running = true
+    }
+
+    function handlePerformanceProfile(profile) {
+        profile = profile.trim()
+
+        if (!profile)
+            return
+
+        var label = profile
+
+        if (profile === "low-power")
+            label = "Low Power"
+        else if (profile === "quiet")
+            label = "Quiet"
+        else if (profile === "balanced")
+            label = "Balanced"
+        else if (profile === "balanced-performance")
+            label = "Balanced Performance"
+        else if (profile === "performance")
+            label = "Performance"
+
+        var changed = root.performanceInitialized && root.performanceProfile !== profile
+
+        root.performanceProfile = profile
+        root.performanceLabel = label
+
+        if (!root.performanceInitialized) {
+            root.performanceInitialized = true
+            return
+        }
+
+        if (changed)
+            root.showPerformance()
+    }
+
+    function updateFanMode() {
+        if (!fanProcess.running)
+            fanProcess.running = true
+    }
+
+    function handleFanSpeed(data) {
+        var parts = data.trim().split(",")
+
+        if (parts.length < 2)
+            return
+
+        var left = parseInt(parts[0])
+        var right = parseInt(parts[1])
+
+        if (isNaN(left) || isNaN(right))
+            return
+
+        var newMode = "Custom"
+
+        if (left === 0 && right === 0)
+            newMode = "Auto"
+        else if (left === 30 && right === 30)
+            newMode = "Quiet"
+        else if (left === 50 && right === 50)
+            newMode = "Balanced"
+        else if (left === 70 && right === 70)
+            newMode = "Performance"
+        else if (left === 100 && right === 100)
+            newMode = "Turbo"
+
+        var changed = root.fanInitialized &&
+                      (root.fanSpeedLeft !== left || root.fanSpeedRight !== right)
+
+        root.fanSpeedLeft = left
+        root.fanSpeedRight = right
+        root.fanMode = newMode
+
+        if (!root.fanInitialized) {
+            root.fanInitialized = true
+            return
+        }
+
+        if (changed)
+            root.showFanMode()
+    }
+
     function showLock(type) {
         root.mode = "lock"
         root.lockType = type
@@ -126,6 +219,18 @@ Singleton {
 
     function showAudioOutput() {
         root.mode = "audio-output"
+        root.visible = true
+        hideTimer.restart()
+    }
+
+    function showPerformance() {
+        root.mode = "performance"
+        root.visible = true
+        hideTimer.restart()
+    }
+
+    function showFanMode() {
+        root.mode = "fan"
         root.visible = true
         hideTimer.restart()
     }
@@ -181,6 +286,8 @@ Singleton {
         updateBattery()
         updateLocks()
         updateAudioOutput()
+        updatePerformanceProfile()
+        updateFanMode()
     }
 
     Connections {
@@ -268,19 +375,38 @@ Singleton {
                 if (!line)
                     return
 
-                var starIndex = line.indexOf("*")
-                var dotIndex = line.indexOf(".", starIndex)
-                var volumeIndex = line.lastIndexOf(" [vol:")
+                var marker = line.indexOf(".")
+                var star = line.indexOf("*")
+                var vol = line.indexOf("[vol:")
 
-                if (starIndex === -1 || dotIndex === -1 || volumeIndex === -1)
+                if (star === -1 || marker === -1 || vol === -1)
                     return
 
-                var id = line.slice(starIndex + 1, dotIndex).trim()
-                var description = line.slice(dotIndex + 1, volumeIndex).trim()
+                var id = line.substring(star + 1, marker).trim()
+                var description = line.substring(marker + 1, vol).trim()
 
-                if (id && description)
-                    root.handleAudioOutput(id, description)
+                root.handleAudioOutput(id, description)
             }
+        }
+    }
+
+    Process {
+        id: performanceProcess
+
+        command: ["cat", "/sys/firmware/acpi/platform_profile"]
+
+        stdout: SplitParser {
+            onRead: data => root.handlePerformanceProfile(data)
+        }
+    }
+
+    Process {
+        id: fanProcess
+
+        command: ["cat", "/sys/module/linuwu_sense/drivers/platform:acer-wmi/acer-wmi/predator_sense/fan_speed"]
+
+        stdout: SplitParser {
+            onRead: data => root.handleFanSpeed(data)
         }
     }
 
@@ -337,6 +463,22 @@ Singleton {
     }
 
     Timer {
+        id: performanceTimer
+        interval: 500
+        repeat: true
+        running: true
+        onTriggered: root.updatePerformanceProfile()
+    }
+
+    Timer {
+        id: fanTimer
+        interval: 500
+        repeat: true
+        running: true
+        onTriggered: root.updateFanMode()
+    }
+
+    Timer {
         id: hideTimer
         interval: 1800
         repeat: false
@@ -356,6 +498,14 @@ Singleton {
         function showAudioOutput(): void {
             root.updateAudioOutput()
             root.showAudioOutput()
+        }
+        function showPerformance(): void {
+            root.updatePerformanceProfile()
+            root.showPerformance()
+        }
+        function showFanMode(): void {
+            root.updateFanMode()
+            root.showFanMode()
         }
     }
 }
