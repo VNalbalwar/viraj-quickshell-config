@@ -25,6 +25,14 @@ PanelWindow {
     color: "transparent"
     implicitHeight: 160
 
+    onWallpaperModeChanged: {
+        if (wallpaperMode) {
+            Qt.callLater(function() {
+                wallpaperView.forceActiveFocus()
+            })
+        }
+    }
+
     Timer {
         id: wallpaperHideTimer
         interval: 520
@@ -74,8 +82,8 @@ PanelWindow {
         item: island
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: wallpaperMode ? 34 : (island.expanded ? 34 : 16)
-        bottomRightRadius: wallpaperMode ? 34 : (island.expanded ? 34 : 16)
+        bottomLeftRadius: wallpaperMode ? 48 : (island.expanded ? 34 : 16)
+        bottomRightRadius: wallpaperMode ? 48 : (island.expanded ? 34 : 16)
     }
 
     readonly property var mediaPlayer: {
@@ -113,6 +121,7 @@ PanelWindow {
         anchors.top: parent.top
         anchors.topMargin: 0
         clip: true
+        antialiasing: true
 
         property bool expanded: wallpaperMode || (hover.hovered && !wallpaperClosing)
         visible: true
@@ -123,10 +132,12 @@ PanelWindow {
         implicitWidth: wallpaperMode ? 1080 : (expanded ? 680 : 200)
         implicitHeight: wallpaperMode ? 180 : (expanded ? 130 : 44)
 
+        // Flat top edge, pronounced smooth bottom corners for wallpaper mode.
+        radius: wallpaperMode ? 48 : (expanded ? 34 : 16)
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
-        bottomRightRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
+        bottomLeftRadius: wallpaperMode ? 48 : (expanded ? 34 : 16)
+        bottomRightRadius: wallpaperMode ? 48 : (expanded ? 34 : 16)
         color: "#000000"
 
         Behavior on opacity {
@@ -337,12 +348,18 @@ PanelWindow {
                     return
 
                 var nextIndex = WallpaperState.selectedIndex
-                if (event.key === Qt.Key_Left || event.key === Qt.Key_Up)
+
+                if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
                     nextIndex = (nextIndex - 1 + wallpaperList.count) % wallpaperList.count
-                else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down)
+                } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) {
                     nextIndex = (nextIndex + 1) % wallpaperList.count
-                else
+                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    WallpaperState.selectAndApply()
+                    event.accepted = true
                     return
+                } else {
+                    return
+                }
 
                 WallpaperState.selectedIndex = nextIndex
                 wallpaperList.positionViewAtIndex(nextIndex, ListView.Contain)
