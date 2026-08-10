@@ -3,6 +3,7 @@ import Quickshell.Services.Mpris
 import Quickshell.Io
 import QtQuick
 import Quickshell.Widgets
+import "../wallpaper_switcher"
 import "../theme"
 
 PanelWindow {
