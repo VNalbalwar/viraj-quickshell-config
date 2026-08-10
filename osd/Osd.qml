@@ -23,10 +23,12 @@ Item {
 
         Text {
             text: OsdState.mode === "mic"
-      ? "󰍬"
-      : OsdState.mode === "volume"
-        ? (OsdState.muted ? "󰖁" : "󰕾")
-        : "󰃠"
+                ? "󰍬"
+                : OsdState.mode === "battery"
+                    ? (OsdState.batteryState === "charging" ? "󰂄" : "󰁹")
+                    : OsdState.mode === "volume"
+                        ? (OsdState.muted ? "󰖁" : "󰕾")
+                        : "󰃠"
             color: Colors.fg
             font {
                 pixelSize: 20
@@ -44,7 +46,13 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             Rectangle {
-                width: parent.width * ((OsdState.mode === "volume" ? OsdState.volume : OsdState.brightness) / 100)
+                width: parent.width * (
+                    (OsdState.mode === "volume"
+                        ? OsdState.volume
+                        : OsdState.mode === "battery"
+                            ? OsdState.battery
+                            : OsdState.brightness) / 100
+                )
                 height: parent.height
                 radius: parent.radius
                 color: Colors.fg
@@ -60,10 +68,14 @@ Item {
 
         Text {
             text: OsdState.mode === "mic"
-      ? (OsdState.micMuted ? "Microphone Muted" : "Microphone On")
-      : ((OsdState.mode === "volume"
-          ? OsdState.volume
-          : OsdState.brightness) + "%")
+                ? (OsdState.micMuted ? "Microphone Muted" : "Microphone On")
+                : OsdState.mode === "battery"
+                    ? (OsdState.batteryState === "fully-charged"
+                        ? "Fully Charged"
+                        : OsdState.battery + "%")
+                    : ((OsdState.mode === "volume"
+                        ? OsdState.volume
+                        : OsdState.brightness) + "%")
             color: Colors.fg
             font {
                 pixelSize: 13
