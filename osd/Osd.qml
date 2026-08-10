@@ -16,14 +16,9 @@ Item {
     }
 
     Row {
-        anchors {
-            left: parent.left
-            right: parent.right
-            verticalCenter: parent.verticalCenter
-            leftMargin: 22
-            rightMargin: 22
-        }
+        id: osdContent
 
+        anchors.centerIn: parent
         spacing: 12
 
         Text {
