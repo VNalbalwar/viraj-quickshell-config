@@ -34,6 +34,9 @@ PanelWindow {
 
     onWallpaperModeChanged: {
         if (wallpaperMode) {
+            if (launcherMode)
+                AppLauncherState.hide()
+
             Qt.callLater(function() {
                 wallpaperView.forceActiveFocus()
             })
@@ -42,8 +45,12 @@ PanelWindow {
 
     onLauncherModeChanged: {
         if (launcherMode) {
+            if (wallpaperMode)
+                WallpaperState.hide()
+
             barVisible = true
             wallpaperClosing = false
+
             Qt.callLater(function() {
                 launcherView.forceActiveFocus()
             })
@@ -411,14 +418,25 @@ PanelWindow {
                 if (filteredApps.length === 0)
                     return
 
+                var oldIndex = selectedIndex
+
                 selectedIndex =
                     (selectedIndex + delta + filteredApps.length)
                     % filteredApps.length
 
-                launcherList.positionViewAtIndex(
-                    selectedIndex,
-                    ListView.Contain
-                )
+                var oldPage = Math.floor(oldIndex / launcherList.pageSize)
+                var newPage = Math.floor(selectedIndex / launcherList.pageSize)
+
+                if (oldPage !== newPage) {
+                    var pageOffset =
+                        newPage *
+                        launcherList.pageSize *
+                        (launcherList.itemWidth + launcherList.spacing)
+
+                    launcherPageSlideAnimation.from = launcherList.contentX
+                    launcherPageSlideAnimation.to = pageOffset
+                    launcherPageSlideAnimation.start()
+                }
             }
             
             Behavior on opacity {
@@ -497,6 +515,7 @@ PanelWindow {
                     onTextChanged: {
                         launcherView.searchQuery = text
                         launcherView.selectedIndex = 0
+                        launcherList.contentX = 0
                     }
 
                     Keys.onPressed: function(event) {
@@ -553,10 +572,22 @@ PanelWindow {
 
                 model: launcherView.filteredApps
 
+                property int pageSize: 6
+                property real itemWidth: (width - (5 * spacing)) / 6
+                property real pageWidth: 6 * (itemWidth + spacing)
+
+                NumberAnimation {
+                    id: launcherPageSlideAnimation
+                    target: launcherList
+                    property: "contentX"
+                    duration: 500
+                    easing.type: Easing.InOutCubic
+                }
+
                 delegate: Rectangle {
                     id: appCard
 
-                    width: 130
+                    width: launcherList.itemWidth
                     height: 105
                     radius: 16
 
