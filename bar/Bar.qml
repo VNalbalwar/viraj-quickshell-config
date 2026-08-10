@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Services.Mpris
 import Quickshell.Io
+import Quickshell.Wayland
 import QtQuick
 import Quickshell.Widgets
 import "../wallpaper_switcher"
@@ -19,6 +20,7 @@ PanelWindow {
     }
 
     focusable: wallpaperMode
+    WlrLayershell.keyboardFocus: wallpaperMode ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
@@ -132,7 +134,6 @@ PanelWindow {
         implicitWidth: wallpaperMode ? 1080 : (expanded ? 680 : 200)
         implicitHeight: wallpaperMode ? 180 : (expanded ? 130 : 44)
 
-        // Keep wallpaper mode identical to the normal expanded bar at the bottom.
         radius: wallpaperMode ? 34 : (expanded ? 34 : 16)
         topLeftRadius: 0
         topRightRadius: 0
