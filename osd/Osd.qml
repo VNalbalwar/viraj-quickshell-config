@@ -22,12 +22,16 @@ PanelWindow {
     Rectangle {
         id: osdPill
 
-        width: 260
+        width: 500
         height: 44
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
 
-        radius: 22
+        radius: 0
+        topLeftRadius: 0
+        topRightRadius: 0
+        bottomLeftRadius: 34
+        bottomRightRadius: 34
         color: "#000000"
         antialiasing: true
 
