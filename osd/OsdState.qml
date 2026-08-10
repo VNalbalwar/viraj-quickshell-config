@@ -37,6 +37,7 @@ Singleton {
     property string fanMode: ""
     property bool fanInitialized: false
 
+    property bool wifiEnabled: true
     property bool wifiConnected: false
     property string wifiName: ""
     property string wifiIcon: "󰤨"
@@ -174,20 +175,27 @@ Singleton {
 
     function handleWifi(data) {
         var parts = data.trim().split("|")
-        if (parts.length < 2)
+        if (parts.length < 3)
             return
 
-        var state = parts[0].trim()
+        var enabled = parts[0].trim() === "enabled"
+        var state = parts[1].trim()
         var connected = state.indexOf("100 (connected)") === 0
-        var name = parts.slice(1).join("|").trim()
+        var name = parts.slice(2).join("|").trim()
 
-        if (!connected)
+        if (!enabled || !connected)
             name = ""
 
-        var changed = root.wifiInitialized && (root.wifiConnected !== connected || root.wifiName !== name)
+        var changed = root.wifiInitialized && (
+            root.wifiEnabled !== enabled ||
+            root.wifiConnected !== connected ||
+            root.wifiName !== name
+        )
+
+        root.wifiEnabled = enabled
         root.wifiConnected = connected
         root.wifiName = name
-        root.wifiIcon = connected ? "󰤨" : "󰤭"
+        root.wifiIcon = !enabled ? "󰖪" : (connected ? "󰤨" : "󰤭")
 
         if (!root.wifiInitialized) {
             root.wifiInitialized = true
@@ -321,7 +329,7 @@ Singleton {
 
     Process {
         id: wifiProcess
-        command: ["sh", "-c", "dev=$(nmcli -t -f DEVICE,TYPE dev | awk -F: '$2==\"wifi\"{print $1; exit}'); if [ -n \"$dev\" ]; then state=$(nmcli -t -f GENERAL.STATE dev show \"$dev\" | sed 's/^GENERAL.STATE://'); conn=$(nmcli -t -f GENERAL.CONNECTION dev show \"$dev\" | sed 's/^GENERAL.CONNECTION://'); printf '%s|%s\\n' \"$state\" \"$conn\"; else printf '0 (disconnected)|\\n'; fi"]
+        command: ["sh", "-c", "enabled=$(nmcli -t radio wifi); dev=$(nmcli -t -f DEVICE,TYPE dev | awk -F: '$2==\"wifi\"{print $1; exit}'); if [ -n \"$dev\" ]; then state=$(nmcli -t -f GENERAL.STATE dev show \"$dev\" | sed 's/^GENERAL.STATE://'); conn=$(nmcli -t -f GENERAL.CONNECTION dev show \"$dev\" | sed 's/^GENERAL.CONNECTION://'); printf '%s|%s|%s\\n' \"$enabled\" \"$state\" \"$conn\"; else printf '%s|0 (disconnected)|\\n' \"$enabled\"; fi"]
         stdout: SplitParser { onRead: data => root.handleWifi(data) }
     }
 
