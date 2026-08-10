@@ -1,6 +1,7 @@
 pragma Singleton
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import QtQuick
 
@@ -25,7 +26,12 @@ Singleton {
     property string lockType: "caps"
     property bool lockInitialized: false
 
+    property string audioOutputName: ""
+    property string audioOutputIcon: "󰕾"
+    property bool audioOutputInitialized: false
+
     readonly property var batteryDevice: UPower.displayDevice
+    readonly property var audioSink: Pipewire.defaultAudioSink
 
     function readBrightness() {
         brightnessProcess.running = true
@@ -45,8 +51,6 @@ Singleton {
         if (!device || !device.ready)
             return
 
-        // Quickshell exposes UPower's percentage as a 0.0 - 1.0 value.
-        // Convert it to the 0 - 100 range used by the OSD meter.
         root.battery = Math.max(0, Math.min(100, Math.round(device.percentage * 100)))
 
         if (device.state === UPowerDeviceState.Charging ||
@@ -66,9 +70,48 @@ Singleton {
         lockProcess.running = true
     }
 
+    function updateAudioOutput() {
+        var sink = root.audioSink
+
+        if (!Pipewire.ready || !sink || !sink.ready)
+            return
+
+        var description = sink.description || sink.name || "Audio Output"
+        var lower = description.toLowerCase()
+
+        if (lower.indexOf("hdmi") !== -1 || lower.indexOf("displayport") !== -1) {
+            root.audioOutputIcon = "󰍹"
+            root.audioOutputName = "HDMI / DisplayPort"
+        } else if (lower.indexOf("speaker") !== -1 || lower.indexOf("built-in") !== -1 || lower.indexOf("internal") !== -1) {
+            root.audioOutputIcon = "󰕾"
+            root.audioOutputName = "Speakers"
+        } else if (lower.indexOf("headphone") !== -1 ||
+                   lower.indexOf("headset") !== -1 ||
+                   lower.indexOf("buds") !== -1 ||
+                   lower.indexOf("bluetooth") !== -1 ||
+                   lower.indexOf("bluez") !== -1) {
+            root.audioOutputIcon = "󰋋"
+            root.audioOutputName = description
+        } else {
+            root.audioOutputIcon = "󰕾"
+            root.audioOutputName = description
+        }
+
+        if (root.audioOutputInitialized)
+            root.showAudioOutput()
+        else
+            root.audioOutputInitialized = true
+    }
+
     function showLock(type) {
         root.mode = "lock"
         root.lockType = type
+        root.visible = true
+        hideTimer.restart()
+    }
+
+    function showAudioOutput() {
+        root.mode = "audio-output"
         root.visible = true
         hideTimer.restart()
     }
@@ -123,6 +166,7 @@ Singleton {
         readBrightness()
         updateBattery()
         updateLocks()
+        updateAudioOutput()
     }
 
     Connections {
@@ -140,6 +184,19 @@ Singleton {
 
             if (root.batteryInitialized)
                 root.showBattery()
+        }
+    }
+
+    Connections {
+        target: Pipewire
+
+        function onDefaultAudioSinkChanged() {
+            root.updateAudioOutput()
+        }
+
+        function onReadyChanged() {
+            if (Pipewire.ready)
+                root.updateAudioOutput()
         }
     }
 
@@ -201,8 +258,6 @@ Singleton {
     Process {
         id: lockProcess
 
-        // Emit one compact JSON object so SplitParser receives the complete
-        // payload in a single line instead of trying to parse multi-line JSON.
         command: ["sh", "-c", "hyprctl devices -j | jq -c '.keyboards[] | select(.main == true) | {capsLock, numLock}'"]
 
         stdout: SplitParser {
@@ -261,5 +316,6 @@ Singleton {
         function showVolume(): void { root.showVolume() }
         function showMic(): void { root.showMic() }
         function showBattery(): void { root.showBattery() }
+        function showAudioOutput(): void { root.showAudioOutput() }
     }
 }
