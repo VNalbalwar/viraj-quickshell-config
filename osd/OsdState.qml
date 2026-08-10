@@ -20,6 +20,11 @@ Singleton {
     property string batteryState: "unknown"
     property bool batteryInitialized: false
 
+    property bool capsLock: false
+    property bool numLock: false
+    property string lockType: "caps"
+    property bool lockInitialized: false
+
     readonly property var batteryDevice: UPower.displayDevice
 
     function readBrightness() {
@@ -55,6 +60,17 @@ Singleton {
         } else {
             root.batteryState = "unknown"
         }
+    }
+
+    function updateLocks() {
+        lockProcess.running = true
+    }
+
+    function showLock(type) {
+        root.mode = "lock"
+        root.lockType = type
+        root.visible = true
+        hideTimer.restart()
     }
 
     function showVolume() {
@@ -106,7 +122,7 @@ Singleton {
     Component.onCompleted: {
         readBrightness()
         updateBattery()
-        batteryInitialized = true
+        updateLocks()
     }
 
     Connections {
@@ -180,6 +196,65 @@ Singleton {
                 root.micMuted = output.indexOf("[MUTED]") !== -1
             }
         }
+    }
+
+    Process {
+        id: lockProcess
+
+        command: ["hyprctl", "devices", "-j"]
+
+        stdout: SplitParser {
+            onRead: data => {
+                try {
+                    var devices = JSON.parse(data)
+                    var keyboards = devices.keyboards || []
+                    var keyboard = null
+
+                    for (var i = 0; i < keyboards.length; ++i) {
+                        if (keyboards[i].main) {
+                            keyboard = keyboards[i]
+                            break
+                        }
+                    }
+
+                    if (!keyboard && keyboards.length > 0)
+                        keyboard = keyboards[0]
+
+                    if (!keyboard)
+                        return
+
+                    var newCaps = !!keyboard.capsLock
+                    var newNum = !!keyboard.numLock
+
+                    if (!root.lockInitialized) {
+                        root.capsLock = newCaps
+                        root.numLock = newNum
+                        root.lockInitialized = true
+                        return
+                    }
+
+                    if (newCaps !== root.capsLock) {
+                        root.capsLock = newCaps
+                        root.showLock("caps")
+                    }
+
+                    if (newNum !== root.numLock) {
+                        root.numLock = newNum
+                        root.showLock("num")
+                    }
+                } catch (error) {
+                    console.log("Failed to parse keyboard lock state:", error)
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: lockTimer
+        interval: 250
+        repeat: true
+        running: true
+        onTriggered: root.updateLocks()
     }
 
     Timer {
