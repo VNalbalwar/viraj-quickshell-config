@@ -376,20 +376,255 @@ PanelWindow {
             opacity: launcherMode ? 1 : 0
             focus: launcherMode
 
+            property string searchQuery: ""
+            property int selectedIndex: 0
+
+            property var filteredApps: {
+                var q = searchQuery.trim().toLowerCase()
+                var apps = DesktopEntries.applications.values
+
+                if (q === "")
+                    return apps
+
+                return apps.filter(function(app) {
+                    if (app.name.toLowerCase().indexOf(q) !== -1)
+                        return true
+
+                    if (app.genericName &&
+                        app.genericName.toLowerCase().indexOf(q) !== -1)
+                        return true
+
+                    if (app.keywords) {
+                        for (var i = 0; i < app.keywords.length; i++) {
+                            if (app.keywords[i].toLowerCase().indexOf(q) !== -1)
+                                return true
+                        }
+                    }
+
+                    return false
+                }).sort(function(a, b) {
+                    return a.name.localeCompare(b.name)
+                })
+            }
+
+            function navigate(delta) {
+                if (filteredApps.length === 0)
+                    return
+
+                selectedIndex =
+                    (selectedIndex + delta + filteredApps.length)
+                    % filteredApps.length
+
+                launcherList.positionViewAtIndex(
+                    selectedIndex,
+                    ListView.Contain
+                )
+            }
+            
             Behavior on opacity {
                 NumberAnimation { duration: 180 }
             }
 
             onVisibleChanged: {
-                if (visible)
+                if (visible) {
+                    launcherSearch.text = ""
+                    searchQuery = ""
+                    selectedIndex = 0
+
                     forceActiveFocus()
+
+                    Qt.callLater(function() {
+                        launcherSearch.forceActiveFocus()
+                    })
+                }
             }
 
-            Text {
-                anchors.centerIn: parent
-                text: "App Launcher"
-                color: Colors.fg
-                font { pixelSize: 18; weight: Font.DemiBold }
+            Rectangle {
+                anchors {
+                    top: parent.top
+                    left: parent.left
+                    right: parent.right
+                    topMargin: 18
+                    leftMargin: 24
+                    rightMargin: 24
+                }
+
+                height: 46
+                radius: 14
+                color: Colors.alpha(Colors.colFg, 0.06)
+
+                Text {
+                    anchors {
+                        left: parent.left
+                        leftMargin: 16
+                        verticalCenter: parent.verticalCenter
+                    }
+
+                    text: "⌕"
+                    color: Colors.fg
+                    opacity: 0.5
+                    font.pixelSize: 20
+                }
+
+                TextInput {
+                    id: launcherSearch
+
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: 46
+                        rightMargin: 16
+                        verticalCenter: parent.verticalCenter
+                    }
+
+                    color: Colors.fg
+                    font.pixelSize: 13
+                    focus: launcherMode
+
+                    selectByMouse: true
+                    clip: true
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        text: "Search apps..."
+                        color: Colors.fg
+                        opacity: 0.35
+                        visible: launcherSearch.text.length === 0
+                        font.pixelSize: 13
+                    }
+
+                    onTextChanged: {
+                        launcherView.searchQuery = text
+                        launcherView.selectedIndex = 0
+                    }
+
+                    Keys.onPressed: function(event) {
+                        if (event.key === Qt.Key_Left ||
+                            event.key === Qt.Key_Up) {
+
+                            launcherView.navigate(-1)
+                            event.accepted = true
+
+                        } else if (event.key === Qt.Key_Right ||
+                                event.key === Qt.Key_Down) {
+
+                            launcherView.navigate(1)
+                            event.accepted = true
+
+                        } else if (event.key === Qt.Key_Return ||
+                                event.key === Qt.Key_Enter) {
+
+                            if (launcherView.filteredApps.length > 0) {
+
+                                var app =
+                                    launcherView.filteredApps[
+                                        launcherView.selectedIndex
+                                    ]
+
+                                app.execute()
+                                AppLauncherState.recordLaunch(app.id)
+                                AppLauncherState.hide()
+                            }
+
+                            event.accepted = true
+                        }
+                    }
+                }
+            }
+
+            ListView {
+                id: launcherList
+
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: launcherSearch.parent.bottom
+                    bottom: parent.bottom
+                    leftMargin: 24
+                    rightMargin: 24
+                    topMargin: 14
+                    bottomMargin: 18
+                }
+
+                orientation: ListView.Horizontal
+                spacing: 12
+                clip: true
+
+                model: launcherView.filteredApps
+
+                delegate: Rectangle {
+                    id: appCard
+
+                    width: 130
+                    height: 105
+                    radius: 16
+
+                    color: index === launcherView.selectedIndex ? Colors.alpha(Colors.colBlue, 0.38) : Colors.alpha(Colors.colFg, 0.06)
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: 150
+                        }
+                    }
+
+                    HoverHandler {
+                        id: appHover
+                    }
+
+                    scale: appHover.hovered ? 1.045 : 1.0
+
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 180
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    Column {
+                        anchors.centerIn: parent
+                        spacing: 8
+
+                        Image {
+                            anchors.horizontalCenter: parent.horizontalCenter
+
+                            width: 42
+                            height: 42
+
+                            source: modelData.icon !== ""
+                                ? "image://icon/" + modelData.icon
+                                : ""
+
+                            smooth: true
+                            mipmap: true
+                        }
+
+                        Text {
+                            width: 110
+                            anchors.horizontalCenter: parent.horizontalCenter
+
+                            text: modelData.name
+                            color: Colors.fg
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+
+                            font {
+                                pixelSize: 12
+                                weight: Font.Medium
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+
+                        onClicked: {
+                            modelData.execute()
+                            AppLauncherState.recordLaunch(modelData.id)
+                            AppLauncherState.hide()
+                        }
+                    }
+                }
             }
         }
 
