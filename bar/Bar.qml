@@ -18,6 +18,8 @@ PanelWindow {
         right: true
     }
 
+    focusable: wallpaperMode
+
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
@@ -68,7 +70,13 @@ PanelWindow {
         }
     }
 
-    mask: Region { item: island }
+    mask: Region {
+        item: island
+        topLeftRadius: 0
+        topRightRadius: 0
+        bottomLeftRadius: wallpaperMode ? 34 : (island.expanded ? 34 : 16)
+        bottomRightRadius: wallpaperMode ? 34 : (island.expanded ? 34 : 16)
+    }
 
     readonly property var mediaPlayer: {
         for (var i = 0; i < Mpris.players.values.length; i++) {
@@ -115,8 +123,6 @@ PanelWindow {
         implicitWidth: wallpaperMode ? 1080 : (expanded ? 680 : 200)
         implicitHeight: wallpaperMode ? 180 : (expanded ? 130 : 44)
 
-        // iPhone-style notch: flat at the screen edge with a restrained,
-        // smooth curve only along the bottom edge.
         topLeftRadius: 0
         topRightRadius: 0
         bottomLeftRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
@@ -173,7 +179,6 @@ PanelWindow {
                 radius: 10
                 color: Colors.alpha(Colors.colFg, 0.06)
 
-                // Using the official Quickshell widget to strictly clip the image inside the radius
                 ClippingRectangle {
                     anchors.fill: parent
                     radius: parent.radius
@@ -316,9 +321,32 @@ PanelWindow {
             anchors.fill: parent
             visible: wallpaperMode
             opacity: wallpaperMode ? 1 : 0
+            focus: wallpaperMode
 
             Behavior on opacity {
                 NumberAnimation { duration: 180 }
+            }
+
+            onVisibleChanged: {
+                if (visible)
+                    forceActiveFocus()
+            }
+
+            Keys.onPressed: function(event) {
+                if (!wallpaperMode || wallpaperList.count === 0)
+                    return
+
+                var nextIndex = WallpaperState.selectedIndex
+                if (event.key === Qt.Key_Left || event.key === Qt.Key_Up)
+                    nextIndex = (nextIndex - 1 + wallpaperList.count) % wallpaperList.count
+                else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down)
+                    nextIndex = (nextIndex + 1) % wallpaperList.count
+                else
+                    return
+
+                WallpaperState.selectedIndex = nextIndex
+                wallpaperList.positionViewAtIndex(nextIndex, ListView.Contain)
+                event.accepted = true
             }
 
             Text {
@@ -350,34 +378,9 @@ PanelWindow {
                 }
 
                 height: 105
-
                 orientation: ListView.Horizontal
                 spacing: 12
-
                 model: WallpaperState.wallpapers
-                focus: wallpaperMode
-
-                onVisibleChanged: {
-                    if (visible)
-                        forceActiveFocus()
-                }
-
-                Keys.onPressed: function(event) {
-                    if (!wallpaperMode || wallpaperList.count === 0)
-                        return
-
-                    var nextIndex = WallpaperState.selectedIndex
-                    if (event.key === Qt.Key_Left || event.key === Qt.Key_Up)
-                        nextIndex = (nextIndex - 1 + wallpaperList.count) % wallpaperList.count
-                    else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down)
-                        nextIndex = (nextIndex + 1) % wallpaperList.count
-                    else
-                        return
-
-                    WallpaperState.selectedIndex = nextIndex
-                    wallpaperList.positionViewAtIndex(nextIndex, ListView.Contain)
-                    event.accepted = true
-                }
 
                 delegate: Rectangle {
                     id: wallpaperCard
@@ -385,7 +388,7 @@ PanelWindow {
                     height: 90
                     radius: 14
                     clip: true
-
+                    antialiasing: true
                     color: Colors.alpha(Colors.colFg, 0.06)
 
                     HoverHandler { id: wallpaperHover }
@@ -395,12 +398,17 @@ PanelWindow {
                         NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
                     }
 
-                    Image {
+                    ClippingRectangle {
                         anchors.fill: parent
-                        source: "file://" + modelData
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        cache: true
+                        radius: wallpaperCard.radius
+
+                        Image {
+                            anchors.fill: parent
+                            source: "file://" + modelData
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                            cache: true
+                        }
                     }
 
                     Rectangle {
@@ -408,7 +416,8 @@ PanelWindow {
                         color: "transparent"
                         border.width: index === WallpaperState.selectedIndex ? 3 : (wallpaperHover.hovered ? 2 : 0)
                         border.color: index === WallpaperState.selectedIndex ? Colors.colBlue : Colors.alpha(Colors.colFg, 0.55)
-                        radius: parent.radius
+                        radius: wallpaperCard.radius
+                        antialiasing: true
                         Behavior on border.width { NumberAnimation { duration: 120 } }
                     }
 
@@ -416,7 +425,7 @@ PanelWindow {
                         anchors.fill: parent
                         onClicked: {
                             WallpaperState.selectedIndex = index
-                            wallpaperList.forceActiveFocus()
+                            wallpaperView.forceActiveFocus()
                             WallpaperState.selectAndApply()
                         }
                     }
