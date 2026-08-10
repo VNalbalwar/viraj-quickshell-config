@@ -36,4 +36,13 @@ ShellRoot {
             screen: modelData
         }
     }
+
+    Variants {
+        model: Quickshell.screens
+
+        Osd {
+            property var modelData
+            screen: modelData
+        }
+    }
 }
