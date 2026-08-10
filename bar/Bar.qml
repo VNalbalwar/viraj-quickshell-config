@@ -10,6 +10,7 @@ PanelWindow {
     property var screen
     property bool barVisible: true
     property bool wallpaperMode: WallpaperState.visible
+    property bool wallpaperClosing: false
 
     anchors {
         top: true
@@ -22,18 +23,47 @@ PanelWindow {
     color: "transparent"
     implicitHeight: 160
 
+    Timer {
+        id: wallpaperHideTimer
+        interval: 520
+        repeat: false
+        onTriggered: {
+            if (wallpaperClosing && !WallpaperState.visible) {
+                wallpaperClosing = false
+                barVisible = false
+            }
+        }
+    }
+
     IpcHandler {
         target: "bar"
 
         function toggle(): void {
-            barVisible = !barVisible
+            if (!barVisible) {
+                barVisible = true
+                wallpaperClosing = false
+                return
+            }
+
+            if (wallpaperMode) {
+                wallpaperClosing = true
+                WallpaperState.hide()
+                wallpaperHideTimer.restart()
+                return
+            }
+
+            barVisible = false
         }
 
         function show(): void {
+            wallpaperHideTimer.stop()
+            wallpaperClosing = false
             barVisible = true
         }
 
         function hide(): void {
+            wallpaperHideTimer.stop()
+            wallpaperClosing = false
             barVisible = false
         }
     }
@@ -76,7 +106,7 @@ PanelWindow {
         anchors.topMargin: 0
         clip: true
 
-        property bool expanded: hover.hovered || wallpaperMode
+        property bool expanded: wallpaperMode || (hover.hovered && !wallpaperClosing)
         visible: barVisible
 
         implicitWidth: wallpaperMode ? 1080 : (expanded ? 680 : 200)
@@ -86,8 +116,8 @@ PanelWindow {
         // smooth curve only along the bottom edge.
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: expanded ? 34 : 16
-        bottomRightRadius: expanded ? 34 : 16
+        bottomLeftRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
+        bottomRightRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
         color: "#000000"
 
         Behavior on implicitWidth {
@@ -161,7 +191,6 @@ PanelWindow {
                     }
                 }
             }
-
 
             Column {
                 id: songInfo
@@ -308,6 +337,8 @@ PanelWindow {
                     right: parent.right
                     bottom: parent.bottom
                     bottomMargin: 18
+                    leftMargin: 24
+                    rightMargin: 24
                 }
 
                 height: 105
@@ -327,9 +358,7 @@ PanelWindow {
 
                     Image {
                         anchors.fill: parent
-
                         source: "file://" + modelData
-
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         cache: true
@@ -337,7 +366,6 @@ PanelWindow {
 
                     MouseArea {
                         anchors.fill: parent
-
                         onClicked: {
                             WallpaperState.selectedIndex = index
                             WallpaperState.selectAndApply()
@@ -346,7 +374,6 @@ PanelWindow {
 
                     Rectangle {
                         anchors.fill: parent
-
                         color: "transparent"
                         border.width: index === WallpaperState.selectedIndex ? 3 : 0
                         border.color: Colors.colBlue
