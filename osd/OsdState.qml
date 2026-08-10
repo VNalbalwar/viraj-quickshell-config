@@ -9,10 +9,25 @@ Singleton {
     property bool visible: false
     property int brightness: 0
 
+    property int volume: 0
+    property bool muted: false
+    property string mode: "brightness"
+
     function readBrightness() {
         brightnessProcess.running = true
     }
 
+    function readVolume() {
+        volumeProcess.running = true
+    }
+
+    function showVolume() {
+        root.mode = "volume"
+        readVolume()
+        root.visible = true
+        hideTimer.restart()
+    }
+    
     function show() {
         readBrightness()
         root.visible = true
@@ -25,6 +40,7 @@ Singleton {
     }
 
     function showBrightness() {
+        root.mode = "brightness"
         readBrightness()
         root.visible = true
         hideTimer.restart()
@@ -58,6 +74,29 @@ Singleton {
         }
     }
 
+    Process {
+        id: volumeProcess
+
+        command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
+
+        stdout: SplitParser {
+            onRead: data => {
+                var output = data.trim()
+
+                var match = output.match(/Volume:\s*([0-9.]+)/)
+
+                if (match) {
+                    var value = parseFloat(match[1])
+
+                    if (!isNaN(value))
+                        root.volume = Math.round(value * 100)
+                }
+
+                root.muted = output.indexOf("[MUTED]") !== -1
+            }
+        }
+    }
+
     Timer {
         id: hideTimer
         interval: 1800
@@ -72,5 +111,6 @@ Singleton {
         function show(): void { root.show() }
         function showBrightness(): void { root.showBrightness() }
         function hide(): void { root.hide() }
+        function showVolume(): void { root.showVolume() }
     }
 }
