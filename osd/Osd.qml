@@ -25,7 +25,26 @@ Item {
             text: OsdState.mode === "mic"
                 ? "󰍬"
                 : OsdState.mode === "battery"
-                    ? (OsdState.batteryState === "charging" ? "󰂄" : "󰁹")
+                    ? (
+                        OsdState.batteryState === "charging"
+                            ? (OsdState.battery >= 90 ? "󰂋"
+                                : OsdState.battery >= 80 ? "󰂊"
+                                : OsdState.battery >= 60 ? "󰂉"
+                                : OsdState.battery >= 40 ? "󰂈"
+                                : OsdState.battery >= 30 ? "󰂇"
+                                : OsdState.battery >= 20 ? "󰂆"
+                                : "󰂄")
+                            : OsdState.battery >= 90 ? "󰂂"
+                                : OsdState.battery >= 80 ? "󰂁"
+                                : OsdState.battery >= 70 ? "󰂀"
+                                : OsdState.battery >= 60 ? "󰁿"
+                                : OsdState.battery >= 50 ? "󰁾"
+                                : OsdState.battery >= 40 ? "󰁽"
+                                : OsdState.battery >= 30 ? "󰁼"
+                                : OsdState.battery >= 20 ? "󰁻"
+                                : OsdState.battery >= 10 ? "󰁺"
+                                : "󰂎"
+                    )
                     : OsdState.mode === "volume"
                         ? (OsdState.muted ? "󰖁" : "󰕾")
                         : "󰃠"
