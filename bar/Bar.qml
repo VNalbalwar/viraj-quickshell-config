@@ -14,8 +14,9 @@ PanelWindow {
     property bool barVisible: true
     property bool wallpaperMode: WallpaperState.visible
     property bool launcherMode: AppLauncherState.launcherVisible
+    property bool powerMode: PowerState.visible
     property bool wallpaperClosing: false
-    property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode
+    property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode && !powerMode
 
     anchors {
         top: true
@@ -24,7 +25,7 @@ PanelWindow {
     }
 
     focusable: true
-    WlrLayershell.keyboardFocus: (wallpaperMode || launcherMode)
+    WlrLayershell.keyboardFocus: (powerMode || wallpaperMode || launcherMode)
         ? WlrKeyboardFocus.Exclusive
         : WlrKeyboardFocus.None
 
@@ -38,6 +39,9 @@ PanelWindow {
             if (launcherMode)
                 AppLauncherState.hide()
 
+            if (powerMode)
+                PowerState.hide()
+
             Qt.callLater(function() {
                 wallpaperView.forceActiveFocus()
             })
@@ -48,6 +52,9 @@ PanelWindow {
         if (launcherMode) {
             if (wallpaperMode)
                 WallpaperState.hide()
+
+            if (powerMode)
+                PowerState.hide()
 
             barVisible = true
             wallpaperClosing = false
@@ -184,20 +191,37 @@ PanelWindow {
         clip: true
         antialiasing: true
 
-        property bool expanded: wallpaperMode || launcherMode || osdMode || (hover.hovered && !wallpaperClosing)
+        property bool expanded:
+            powerMode
+            || wallpaperMode
+            || launcherMode
+            || osdMode
+            || (hover.hovered && !wallpaperClosing)
         visible: true
         opacity: barVisible ? 1 : 0
         scale: barVisible ? 1 : 0.96
         transformOrigin: Item.Top
 
-        implicitWidth: wallpaperMode ? 1080 : (launcherMode ? 1000 : (osdMode ? 500 : (expanded ? 680 : 200)))
-        implicitHeight: wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : (expanded ? 130 : 44)))
+        implicitWidth:
+            powerMode ? 550 :
+            wallpaperMode ? 1080 :
+            launcherMode ? 1000 :
+            osdMode ? 500 :
+            (expanded ? 680 : 200)
 
-        radius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        implicitHeight:
+            powerMode ? 124 :
+            wallpaperMode ? 180 :
+            launcherMode ? 240 :
+            osdMode ? 44 :
+            (expanded ? 130 : 44)
+
+        radius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
-        bottomRightRadius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        bottomLeftRadius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        bottomRightRadius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+
         color: "#000000"
 
         Behavior on opacity {
@@ -242,8 +266,32 @@ PanelWindow {
         }
 
         Item {
+            id: powerView
+
             anchors.fill: parent
-            opacity: island.expanded && !wallpaperMode && !launcherMode && !osdMode ? 1 : 0
+            visible: powerMode
+            opacity: powerMode ? 1 : 0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 160
+                }
+            }
+
+            Row {
+                anchors.centerIn: parent
+                spacing: 8
+            }
+        }
+
+        Item {
+            anchors.fill: parent
+            opacity: island.expanded
+                && !powerMode
+                && !wallpaperMode
+                && !launcherMode
+                && !osdMode ? 1 : 0
+
             Behavior on opacity { NumberAnimation { duration: 220 } }
 
             Rectangle {
