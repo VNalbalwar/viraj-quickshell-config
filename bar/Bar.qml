@@ -19,8 +19,12 @@ PanelWindow {
         right: true
     }
 
-    focusable: wallpaperMode
-    WlrLayershell.keyboardFocus: wallpaperMode ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    // Keep the panel focusable so the wallpaper picker can receive keys
+    // immediately when it opens.
+    focusable: true
+    WlrLayershell.keyboardFocus: wallpaperMode
+        ? WlrKeyboardFocus.Exclusive
+        : WlrKeyboardFocus.None
 
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
