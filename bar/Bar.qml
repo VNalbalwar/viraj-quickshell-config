@@ -6,6 +6,7 @@ import QtQuick
 import Quickshell.Widgets
 import "../wallpaper_switcher"
 import "../app_launcher"
+import "../osd"
 import "../theme"
 
 PanelWindow {
@@ -14,6 +15,7 @@ PanelWindow {
     property bool wallpaperMode: WallpaperState.visible
     property bool launcherMode: AppLauncherState.launcherVisible
     property bool wallpaperClosing: false
+    property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode
 
     anchors {
         top: true
@@ -21,7 +23,6 @@ PanelWindow {
         right: true
     }
 
-    // Keep the panel focusable so mode-specific views can receive keys immediately.
     focusable: true
     WlrLayershell.keyboardFocus: (wallpaperMode || launcherMode)
         ? WlrKeyboardFocus.Exclusive
@@ -30,7 +31,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
-    implicitHeight: wallpaperMode ? 180 : (launcherMode ? 240 : 160)
+    implicitHeight: wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160))
 
     onWallpaperModeChanged: {
         if (wallpaperMode) {
@@ -54,6 +55,15 @@ PanelWindow {
             Qt.callLater(function() {
                 launcherView.forceActiveFocus()
             })
+        }
+    }
+
+    Connections {
+        target: OsdState
+
+        function onVisibleChanged() {
+            if (OsdState.visible)
+                barVisible = true
         }
     }
 
@@ -133,8 +143,8 @@ PanelWindow {
         item: island
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: (wallpaperMode || launcherMode) ? 34 : (island.expanded ? 34 : 16)
-        bottomRightRadius: (wallpaperMode || launcherMode) ? 34 : (island.expanded ? 34 : 16)
+        bottomLeftRadius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
+        bottomRightRadius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
     }
 
     readonly property var mediaPlayer: {
@@ -174,20 +184,20 @@ PanelWindow {
         clip: true
         antialiasing: true
 
-        property bool expanded: wallpaperMode || launcherMode || (hover.hovered && !wallpaperClosing)
+        property bool expanded: wallpaperMode || launcherMode || osdMode || (hover.hovered && !wallpaperClosing)
         visible: true
         opacity: barVisible ? 1 : 0
         scale: barVisible ? 1 : 0.96
         transformOrigin: Item.Top
 
-        implicitWidth: wallpaperMode ? 1080 : (launcherMode ? 1000 : (expanded ? 680 : 200))
-        implicitHeight: wallpaperMode ? 180 : (launcherMode ? 240 : (expanded ? 130 : 44))
+        implicitWidth: wallpaperMode ? 1080 : (launcherMode ? 1000 : (osdMode ? 500 : (expanded ? 680 : 200)))
+        implicitHeight: wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : (expanded ? 130 : 44)))
 
-        radius: (wallpaperMode || launcherMode) ? 34 : (expanded ? 34 : 16)
+        radius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: (wallpaperMode || launcherMode) ? 34 : (expanded ? 34 : 16)
-        bottomRightRadius: (wallpaperMode || launcherMode) ? 34 : (expanded ? 34 : 16)
+        bottomLeftRadius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        bottomRightRadius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
         color: "#000000"
 
         Behavior on opacity {
@@ -227,9 +237,13 @@ PanelWindow {
             Behavior on opacity { NumberAnimation { duration: 150 } }
         }
 
+        Osd {
+            anchors.fill: parent
+        }
+
         Item {
             anchors.fill: parent
-            opacity: island.expanded && !wallpaperMode && !launcherMode ? 1 : 0
+            opacity: island.expanded && !wallpaperMode && !launcherMode && !osdMode ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 220 } }
 
             Rectangle {
@@ -438,7 +452,7 @@ PanelWindow {
                     launcherPageSlideAnimation.start()
                 }
             }
-            
+
             Behavior on opacity {
                 NumberAnimation { duration: 180 }
             }
@@ -521,31 +535,20 @@ PanelWindow {
                     Keys.onPressed: function(event) {
                         if (event.key === Qt.Key_Left ||
                             event.key === Qt.Key_Up) {
-
                             launcherView.navigate(-1)
                             event.accepted = true
-
                         } else if (event.key === Qt.Key_Right ||
-                                event.key === Qt.Key_Down) {
-
+                                   event.key === Qt.Key_Down) {
                             launcherView.navigate(1)
                             event.accepted = true
-
                         } else if (event.key === Qt.Key_Return ||
-                                event.key === Qt.Key_Enter) {
-
+                                   event.key === Qt.Key_Enter) {
                             if (launcherView.filteredApps.length > 0) {
-
-                                var app =
-                                    launcherView.filteredApps[
-                                        launcherView.selectedIndex
-                                    ]
-
+                                var app = launcherView.filteredApps[launcherView.selectedIndex]
                                 app.execute()
                                 AppLauncherState.recordLaunch(app.id)
                                 AppLauncherState.hide()
                             }
-
                             event.accepted = true
                         }
                     }
@@ -594,14 +597,10 @@ PanelWindow {
                     color: index === launcherView.selectedIndex ? Colors.alpha(Colors.colBlue, 0.38) : Colors.alpha(Colors.colFg, 0.06)
 
                     Behavior on color {
-                        ColorAnimation {
-                            duration: 150
-                        }
+                        ColorAnimation { duration: 150 }
                     }
 
-                    HoverHandler {
-                        id: appHover
-                    }
+                    HoverHandler { id: appHover }
 
                     scale: appHover.hovered ? 1.045 : 1.0
 
@@ -618,14 +617,9 @@ PanelWindow {
 
                         Image {
                             anchors.horizontalCenter: parent.horizontalCenter
-
                             width: 42
                             height: 42
-
-                            source: modelData.icon !== ""
-                                ? "image://icon/" + modelData.icon
-                                : ""
-
+                            source: modelData.icon !== "" ? "image://icon/" + modelData.icon : ""
                             smooth: true
                             mipmap: true
                         }
@@ -633,22 +627,16 @@ PanelWindow {
                         Text {
                             width: 110
                             anchors.horizontalCenter: parent.horizontalCenter
-
                             text: modelData.name
                             color: Colors.fg
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
-
-                            font {
-                                pixelSize: 12
-                                weight: Font.Medium
-                            }
+                            font { pixelSize: 12; weight: Font.Medium }
                         }
                     }
 
                     MouseArea {
                         anchors.fill: parent
-
                         onClicked: {
                             modelData.execute()
                             AppLauncherState.recordLaunch(modelData.id)
@@ -724,10 +712,7 @@ PanelWindow {
 
                 text: "Wallpaper"
                 color: Colors.fg
-                font {
-                    pixelSize: 16
-                    weight: Font.DemiBold
-                }
+                font { pixelSize: 16; weight: Font.DemiBold }
             }
 
             ListView {
