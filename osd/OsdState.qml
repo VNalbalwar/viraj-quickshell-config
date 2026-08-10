@@ -40,7 +40,9 @@ Singleton {
         if (!device || !device.ready)
             return
 
-        root.battery = Math.round(device.percentage)
+        // Quickshell exposes UPower's percentage as a 0.0 - 1.0 value.
+        // Convert it to the 0 - 100 range used by the OSD meter.
+        root.battery = Math.max(0, Math.min(100, Math.round(device.percentage * 100)))
 
         if (device.state === UPowerDeviceState.Charging ||
             device.state === UPowerDeviceState.PendingCharge) {
@@ -53,10 +55,6 @@ Singleton {
         } else {
             root.batteryState = "unknown"
         }
-    }
-
-    function readBattery() {
-        updateBattery()
     }
 
     function showVolume() {
