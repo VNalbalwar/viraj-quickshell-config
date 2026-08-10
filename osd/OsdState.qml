@@ -1,7 +1,6 @@
 pragma Singleton
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.Pipewire
 import Quickshell.Services.UPower
 import QtQuick
 
@@ -28,11 +27,10 @@ Singleton {
 
     property string audioOutputName: ""
     property string audioOutputIcon: "󰕾"
+    property string audioOutputId: ""
     property bool audioOutputInitialized: false
-    property int audioOutputId: -1
 
     readonly property var batteryDevice: UPower.displayDevice
-    readonly property var audioSink: Pipewire.defaultAudioSink
 
     function readBrightness() {
         brightnessProcess.running = true
@@ -71,49 +69,56 @@ Singleton {
         lockProcess.running = true
     }
 
-    function updateAudioOutput() {
-        var sink = root.audioSink
-
-        // PipeWire can briefly expose a null/unready default sink while a device
-        // is being unplugged or plugged back in. Leave the retry timer running so
-        // we catch the newly selected default sink once it is ready.
-        if (!Pipewire.ready || !sink || !sink.ready) {
-            audioOutputRetryTimer.restart()
-            return
-        }
-
-        var description = sink.description || sink.name || "Audio Output"
+    function normalizeAudioOutput(id, description) {
         var lower = description.toLowerCase()
-        var newName = description
-        var newIcon = "󰕾"
+
+        root.audioOutputId = id
 
         if (lower.indexOf("hdmi") !== -1 || lower.indexOf("displayport") !== -1) {
-            newIcon = "󰍹"
-            newName = "HDMI / DisplayPort"
+            root.audioOutputIcon = "󰍹"
+            root.audioOutputName = "HDMI / DisplayPort"
         } else if (lower.indexOf("speaker") !== -1 ||
                    lower.indexOf("built-in") !== -1 ||
                    lower.indexOf("internal") !== -1) {
-            newIcon = "󰕾"
-            newName = "Speakers"
+            root.audioOutputIcon = "󰕾"
+            root.audioOutputName = "Speakers"
         } else if (lower.indexOf("headphone") !== -1 ||
                    lower.indexOf("headset") !== -1 ||
                    lower.indexOf("buds") !== -1 ||
                    lower.indexOf("bluetooth") !== -1 ||
                    lower.indexOf("bluez") !== -1) {
-            newIcon = "󰋋"
+            root.audioOutputIcon = "󰋋"
+            root.audioOutputName = description
+        } else {
+            root.audioOutputIcon = "󰕾"
+            root.audioOutputName = description
+        }
+    }
+
+    function updateAudioOutput() {
+        // wpctl 1.6.8 reliably reports the currently default sink in the Sinks
+        // section with a leading '*'. Polling this is intentional: it also
+        // handles Bluetooth hotplug transitions where the default node can
+        // disappear briefly before the new default is selected.
+        if (!audioOutputProcess.running)
+            audioOutputProcess.running = true
+    }
+
+    function handleAudioOutput(id, description) {
+        if (!id || !description)
+            return
+
+        var changed = root.audioOutputInitialized && root.audioOutputId !== id
+
+        root.normalizeAudioOutput(id, description)
+
+        if (!root.audioOutputInitialized) {
+            root.audioOutputInitialized = true
+            return
         }
 
-        var changed = root.audioOutputId !== sink.id
-
-        root.audioOutputIcon = newIcon
-        root.audioOutputName = newName
-        root.audioOutputId = sink.id
-        audioOutputRetryTimer.stop()
-
-        if (changed && root.audioOutputInitialized)
+        if (changed)
             root.showAudioOutput()
-        else if (!root.audioOutputInitialized)
-            root.audioOutputInitialized = true
     }
 
     function showLock(type) {
@@ -200,27 +205,6 @@ Singleton {
         }
     }
 
-    Connections {
-        target: Pipewire
-
-        function onDefaultAudioSinkChanged() {
-            root.updateAudioOutput()
-        }
-
-        function onReadyChanged() {
-            if (Pipewire.ready)
-                root.updateAudioOutput()
-        }
-    }
-
-    Connections {
-        target: root.audioSink
-
-        function onReadyChanged() {
-            root.updateAudioOutput()
-        }
-    }
-
     Process {
         id: brightnessProcess
 
@@ -277,6 +261,27 @@ Singleton {
     }
 
     Process {
+        id: audioOutputProcess
+
+        command: ["sh", "-c", "wpctl status | sed -n '/Sinks:/,/Sources:/p' | grep '^.*\\*' | head -n1"]
+
+        stdout: SplitParser {
+            onRead: data => {
+                var line = data.trim()
+
+                if (!line)
+                    return
+
+                var match = line.match(/\\*\\s+(\\d+)\\.\\s+(.+?)\\s+\\[vol:/)
+
+                if (match) {
+                    root.handleAudioOutput(match[1], match[2].trim())
+                }
+            }
+        }
+    }
+
+    Process {
         id: lockProcess
 
         command: ["sh", "-c", "hyprctl devices -j | jq -c '.keyboards[] | select(.main == true) | {capsLock, numLock}'"]
@@ -321,9 +326,10 @@ Singleton {
     }
 
     Timer {
-        id: audioOutputRetryTimer
-        interval: 100
-        repeat: false
+        id: audioOutputTimer
+        interval: 500
+        repeat: true
+        running: true
         onTriggered: root.updateAudioOutput()
     }
 
@@ -344,6 +350,9 @@ Singleton {
         function showVolume(): void { root.showVolume() }
         function showMic(): void { root.showMic() }
         function showBattery(): void { root.showBattery() }
-        function showAudioOutput(): void { root.showAudioOutput() }
+        function showAudioOutput(): void {
+            root.updateAudioOutput()
+            root.showAudioOutput()
+        }
     }
 }
