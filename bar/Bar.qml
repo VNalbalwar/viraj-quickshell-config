@@ -1,11 +1,13 @@
 import Quickshell
 import Quickshell.Services.Mpris
+import Quickshell.Io
 import QtQuick
 import Quickshell.Widgets
 import "../theme"
 
 PanelWindow {
     property var screen
+    property bool barVisible: true
 
     anchors {
         top: true
@@ -13,9 +15,26 @@ PanelWindow {
         right: true
     }
 
-    exclusionMode: ExclusionMode.Ignore
+    exclusionMode: ExclusionMode.Normal
+    exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
     implicitHeight: 160
+
+    IpcHandler {
+        target: "bar"
+
+        function toggle(): void {
+            barVisible = !barVisible
+        }
+
+        function show(): void {
+            barVisible = true
+        }
+
+        function hide(): void {
+            barVisible = false
+        }
+    }
 
     mask: Region { item: island }
 
@@ -49,12 +68,15 @@ PanelWindow {
 
     Rectangle {
         id: island
+        
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: 0
         clip: true
 
         property bool expanded: hover.hovered
+        visible: barVisible
+
         implicitWidth: expanded ? 680 : 200
         implicitHeight: expanded ? 130 : 44
 
