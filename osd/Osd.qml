@@ -26,7 +26,7 @@ PanelWindow {
         height: 58
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
-        topMargin: 42
+        anchors.topMargin: 42
 
         radius: 29
         color: "#000000"
