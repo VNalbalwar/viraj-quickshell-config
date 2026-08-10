@@ -111,7 +111,9 @@ Item {
                     : OsdState.mode === "fan"
                         ? OsdState.fanMode
                         : OsdState.mode === "wifi"
-                            ? (OsdState.wifiConnected ? OsdState.wifiName : "Wi-Fi Disconnected")
+                            ? (!OsdState.wifiEnabled
+                                ? "Wi-Fi Off"
+                                : (OsdState.wifiConnected ? OsdState.wifiName : "Wi-Fi Disconnected"))
                             : OsdState.mode === "bluetooth"
                                 ? (OsdState.bluetoothConnected
                                     ? OsdState.bluetoothName
