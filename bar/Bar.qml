@@ -367,7 +367,12 @@ PanelWindow {
                 }
 
                 WallpaperState.selectedIndex = nextIndex
-                wallpaperList.positionViewAtIndex(nextIndex, ListView.Contain)
+
+                var page = Math.floor(nextIndex / wallpaperList.pageSize)
+                var targetIndex = page * wallpaperList.pageSize
+
+                wallpaperList.positionViewAtIndex(targetIndex, ListView.Beginning)
+
                 event.accepted = true
             }
 
@@ -403,6 +408,16 @@ PanelWindow {
                 orientation: ListView.Horizontal
                 spacing: 12
                 model: WallpaperState.wallpapers
+                
+                property int pageSize: Math.max(1, Math.floor(width / (145 + 12)))
+
+
+                Behavior on contentX {
+                    NumberAnimation {
+                        duration: 280
+                        easing.type: Easing.OutCubic
+                    }
+                }
 
                 delegate: Rectangle {
                     id: wallpaperCard
