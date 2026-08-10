@@ -366,12 +366,24 @@ PanelWindow {
                     return
                 }
 
+                var oldIndex = WallpaperState.selectedIndex
+
+                if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
+                    nextIndex = (oldIndex - 1 + wallpaperList.count) % wallpaperList.count
+                } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) {
+                    nextIndex = (oldIndex + 1) % wallpaperList.count
+                }
+
                 WallpaperState.selectedIndex = nextIndex
 
-                var page = Math.floor(nextIndex / wallpaperList.pageSize)
-                var targetIndex = page * wallpaperList.pageSize
+                var oldPage = Math.floor(oldIndex / wallpaperList.pageSize)
+                var newPage = Math.floor(nextIndex / wallpaperList.pageSize)
 
-                wallpaperList.positionViewAtIndex(targetIndex, ListView.Beginning)
+                if (oldPage !== newPage) {
+                    pageSlideAnimation.from = wallpaperList.contentX
+                    pageSlideAnimation.to = newPage * wallpaperList.pageWidth
+                    pageSlideAnimation.start()
+                }
 
                 event.accepted = true
             }
@@ -408,21 +420,24 @@ PanelWindow {
                 orientation: ListView.Horizontal
                 spacing: 12
                 model: WallpaperState.wallpapers
-                
-                property int pageSize: Math.max(1, Math.floor(width / (145 + 12)))
+
+                property int pageSize: 5
+                property real itemWidth: (width - (4 * spacing)) / 5
+                property real pageWidth: 5 * (itemWidth + spacing)
 
 
-                Behavior on contentX {
-                    NumberAnimation {
-                        duration: 280
-                        easing.type: Easing.OutCubic
-                    }
+                NumberAnimation {
+                    id: pageSlideAnimation
+                    target: wallpaperList
+                    property: "contentX"
+                    duration: 500
+                    easing.type: Easing.InOutCubic
                 }
 
                 delegate: Rectangle {
                     id: wallpaperCard
-                    width: 145
-                    height: 90
+                    width: wallpaper.itemWidth
+                    height: 100
                     radius: 14
                     clip: true
                     antialiasing: true
