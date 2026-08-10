@@ -7,8 +7,10 @@ Singleton {
     id: root
 
     property bool visible: false
+    property int brightness: 0
 
     function show() {
+        brightnessProcess.running = true
         root.visible = true
         hideTimer.restart()
     }
@@ -18,11 +20,36 @@ Singleton {
         root.visible = false
     }
 
+    function showBrightness() {
+        brightnessProcess.running = true
+        root.visible = true
+        hideTimer.restart()
+    }
+
     function toggle() {
         if (root.visible)
             hide()
         else
             show()
+    }
+    
+    Process {
+        id: brightnessProcess
+
+        command: ["brightnessctl", "-m"]
+
+        stdout: SplitParser {
+            onRead: data => {
+                var parts = data.trim().split(",")
+
+                if (parts.length >= 4) {
+                    var value = parseInt(parts[3].replace("%", ""))
+
+                    if (!isNaN(value))
+                        root.brightness = value
+                }
+            }
+        }
     }
 
     Timer {

@@ -54,13 +54,63 @@ PanelWindow {
             }
         }
 
-        Text {
-            anchors.centerIn: parent
-            text: "OSD"
-            color: Colors.fg
-            font {
-                pixelSize: 15
-                weight: Font.DemiBold
+        Row {
+            anchors {
+                left: parent.left
+                right: parent.right
+                verticalCenter: parent.verticalCenter
+                leftMargin: 24
+                rightMargin: 24
+            }
+
+            spacing: 14
+
+            Text {
+                text: "󰃠"
+                color: Colors.fg
+                font {
+                    pixelSize: 20
+                    family: "JetBrainsMono Nerd Font"
+                }
+
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Rectangle {
+                id: brightnessBar
+
+                width: 360
+                height: 6
+                radius: 3
+                color: Colors.alpha(Colors.colFg, 0.15)
+
+                anchors.verticalCenter: parent.verticalCenter
+
+                Rectangle {
+                    width: parent.width * (OsdState.brightness / 100)
+                    height: parent.height
+                    radius: parent.radius
+                    color: Colors.fg
+
+                    Behavior on width {
+                        NumberAnimation {
+                            duration: 180
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+                }
+            }
+
+            Text {
+                text: OsdState.brightness + "%"
+                color: Colors.fg
+
+                font {
+                    pixelSize: 13
+                    weight: Font.DemiBold
+                }
+
+                anchors.verticalCenter: parent.verticalCenter
             }
         }
     }
