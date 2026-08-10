@@ -107,7 +107,10 @@ PanelWindow {
         clip: true
 
         property bool expanded: wallpaperMode || (hover.hovered && !wallpaperClosing)
-        visible: barVisible
+        visible: true
+        opacity: barVisible ? 1 : 0
+        scale: barVisible ? 1 : 0.96
+        transformOrigin: Item.Top
 
         implicitWidth: wallpaperMode ? 1080 : (expanded ? 680 : 200)
         implicitHeight: wallpaperMode ? 180 : (expanded ? 130 : 44)
@@ -120,6 +123,12 @@ PanelWindow {
         bottomRightRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
         color: "#000000"
 
+        Behavior on opacity {
+            NumberAnimation { duration: 260; easing.type: Easing.OutCubic }
+        }
+        Behavior on scale {
+            NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
+        }
         Behavior on implicitWidth {
             NumberAnimation {
                 duration: 500
@@ -168,7 +177,6 @@ PanelWindow {
                 ClippingRectangle {
                     anchors.fill: parent
                     radius: parent.radius
-
                     Image {
                         anchors.fill: parent
                         source: mediaPlayer && mediaPlayer.trackArtUrl ? mediaPlayer.trackArtUrl : ""
@@ -347,14 +355,45 @@ PanelWindow {
                 spacing: 12
 
                 model: WallpaperState.wallpapers
+                focus: wallpaperMode
+
+                onVisibleChanged: {
+                    if (visible)
+                        forceActiveFocus()
+                }
+
+                Keys.onPressed: function(event) {
+                    if (!wallpaperMode || wallpaperList.count === 0)
+                        return
+
+                    var nextIndex = WallpaperState.selectedIndex
+                    if (event.key === Qt.Key_Left || event.key === Qt.Key_Up)
+                        nextIndex = (nextIndex - 1 + wallpaperList.count) % wallpaperList.count
+                    else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down)
+                        nextIndex = (nextIndex + 1) % wallpaperList.count
+                    else
+                        return
+
+                    WallpaperState.selectedIndex = nextIndex
+                    wallpaperList.positionViewAtIndex(nextIndex, ListView.Contain)
+                    event.accepted = true
+                }
 
                 delegate: Rectangle {
+                    id: wallpaperCard
                     width: 145
                     height: 90
                     radius: 14
                     clip: true
 
                     color: Colors.alpha(Colors.colFg, 0.06)
+
+                    HoverHandler { id: wallpaperHover }
+
+                    scale: wallpaperHover.hovered ? 1.045 : 1.0
+                    Behavior on scale {
+                        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                    }
 
                     Image {
                         anchors.fill: parent
@@ -364,20 +403,22 @@ PanelWindow {
                         cache: true
                     }
 
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "transparent"
+                        border.width: index === WallpaperState.selectedIndex ? 3 : (wallpaperHover.hovered ? 2 : 0)
+                        border.color: index === WallpaperState.selectedIndex ? Colors.colBlue : Colors.alpha(Colors.colFg, 0.55)
+                        radius: parent.radius
+                        Behavior on border.width { NumberAnimation { duration: 120 } }
+                    }
+
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
                             WallpaperState.selectedIndex = index
+                            wallpaperList.forceActiveFocus()
                             WallpaperState.selectAndApply()
                         }
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "transparent"
-                        border.width: index === WallpaperState.selectedIndex ? 3 : 0
-                        border.color: Colors.colBlue
-                        radius: parent.radius
                     }
                 }
             }
