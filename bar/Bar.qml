@@ -5,12 +5,14 @@ import Quickshell.Wayland
 import QtQuick
 import Quickshell.Widgets
 import "../wallpaper_switcher"
+import "../app_launcher"
 import "../theme"
 
 PanelWindow {
     property var screen
     property bool barVisible: true
     property bool wallpaperMode: WallpaperState.visible
+    property bool launcherMode: AppLauncherState.launcherVisible
     property bool wallpaperClosing: false
 
     anchors {
@@ -19,22 +21,31 @@ PanelWindow {
         right: true
     }
 
-    // Keep the panel focusable so the wallpaper picker can receive keys
-    // immediately when it opens.
+    // Keep the panel focusable so mode-specific views can receive keys immediately.
     focusable: true
-    WlrLayershell.keyboardFocus: wallpaperMode
+    WlrLayershell.keyboardFocus: (wallpaperMode || launcherMode)
         ? WlrKeyboardFocus.Exclusive
         : WlrKeyboardFocus.None
 
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
-    implicitHeight: wallpaperMode ? 180 : 160
+    implicitHeight: wallpaperMode ? 180 : (launcherMode ? 240 : 160)
 
     onWallpaperModeChanged: {
         if (wallpaperMode) {
             Qt.callLater(function() {
                 wallpaperView.forceActiveFocus()
+            })
+        }
+    }
+
+    onLauncherModeChanged: {
+        if (launcherMode) {
+            barVisible = true
+            wallpaperClosing = false
+            Qt.callLater(function() {
+                launcherView.forceActiveFocus()
             })
         }
     }
@@ -68,6 +79,11 @@ PanelWindow {
                 return
             }
 
+            if (launcherMode) {
+                AppLauncherState.hide()
+                return
+            }
+
             barVisible = false
         }
 
@@ -84,12 +100,34 @@ PanelWindow {
         }
     }
 
+    IpcHandler {
+        target: "launcher"
+
+        function toggle(): void {
+            if (wallpaperMode) {
+                WallpaperState.hide()
+            }
+            AppLauncherState.toggle()
+        }
+
+        function show(): void {
+            if (wallpaperMode) {
+                WallpaperState.hide()
+            }
+            AppLauncherState.show()
+        }
+
+        function hide(): void {
+            AppLauncherState.hide()
+        }
+    }
+
     mask: Region {
         item: island
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: wallpaperMode ? 34 : (island.expanded ? 34 : 16)
-        bottomRightRadius: wallpaperMode ? 34 : (island.expanded ? 34 : 16)
+        bottomLeftRadius: (wallpaperMode || launcherMode) ? 34 : (island.expanded ? 34 : 16)
+        bottomRightRadius: (wallpaperMode || launcherMode) ? 34 : (island.expanded ? 34 : 16)
     }
 
     readonly property var mediaPlayer: {
@@ -129,20 +167,20 @@ PanelWindow {
         clip: true
         antialiasing: true
 
-        property bool expanded: wallpaperMode || (hover.hovered && !wallpaperClosing)
+        property bool expanded: wallpaperMode || launcherMode || (hover.hovered && !wallpaperClosing)
         visible: true
         opacity: barVisible ? 1 : 0
         scale: barVisible ? 1 : 0.96
         transformOrigin: Item.Top
 
-        implicitWidth: wallpaperMode ? 1080 : (expanded ? 680 : 200)
-        implicitHeight: wallpaperMode ? 180 : (expanded ? 130 : 44)
+        implicitWidth: wallpaperMode ? 1080 : (launcherMode ? 1000 : (expanded ? 680 : 200))
+        implicitHeight: wallpaperMode ? 180 : (launcherMode ? 240 : (expanded ? 130 : 44))
 
-        radius: wallpaperMode ? 34 : (expanded ? 34 : 16)
+        radius: (wallpaperMode || launcherMode) ? 34 : (expanded ? 34 : 16)
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
-        bottomRightRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
+        bottomLeftRadius: (wallpaperMode || launcherMode) ? 34 : (expanded ? 34 : 16)
+        bottomRightRadius: (wallpaperMode || launcherMode) ? 34 : (expanded ? 34 : 16)
         color: "#000000"
 
         Behavior on opacity {
@@ -184,7 +222,7 @@ PanelWindow {
 
         Item {
             anchors.fill: parent
-            opacity: island.expanded && !wallpaperMode ? 1 : 0
+            opacity: island.expanded && !wallpaperMode && !launcherMode ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 220 } }
 
             Rectangle {
@@ -332,6 +370,30 @@ PanelWindow {
         }
 
         Item {
+            id: launcherView
+            anchors.fill: parent
+            visible: launcherMode
+            opacity: launcherMode ? 1 : 0
+            focus: launcherMode
+
+            Behavior on opacity {
+                NumberAnimation { duration: 180 }
+            }
+
+            onVisibleChanged: {
+                if (visible)
+                    forceActiveFocus()
+            }
+
+            Text {
+                anchors.centerIn: parent
+                text: "App Launcher"
+                color: Colors.fg
+                font { pixelSize: 18; weight: Font.DemiBold }
+            }
+        }
+
+        Item {
             id: wallpaperView
 
             anchors.fill: parent
@@ -425,7 +487,6 @@ PanelWindow {
                 property real itemWidth: (width - (4 * spacing)) / 5
                 property real pageWidth: 5 * (itemWidth + spacing)
 
-
                 NumberAnimation {
                     id: pageSlideAnimation
                     target: wallpaperList
@@ -436,7 +497,7 @@ PanelWindow {
 
                 delegate: Rectangle {
                     id: wallpaperCard
-                    width: wallpaper.itemWidth
+                    width: wallpaperList.itemWidth
                     height: 100
                     radius: 14
                     clip: true
