@@ -414,26 +414,19 @@ PanelWindow {
                 if (!wallpaperMode || wallpaperList.count === 0)
                     return
 
-                var nextIndex = WallpaperState.selectedIndex
+                var oldIndex = WallpaperState.selectedIndex
+                var nextIndex = oldIndex
 
                 if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
-                    nextIndex = (nextIndex - 1 + wallpaperList.count) % wallpaperList.count
+                    nextIndex = (oldIndex - 1 + wallpaperList.count) % wallpaperList.count
                 } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) {
-                    nextIndex = (nextIndex + 1) % wallpaperList.count
+                    nextIndex = (oldIndex + 1) % wallpaperList.count
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                     WallpaperState.selectAndApply()
                     event.accepted = true
                     return
                 } else {
                     return
-                }
-
-                var oldIndex = WallpaperState.selectedIndex
-
-                if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
-                    nextIndex = (oldIndex - 1 + wallpaperList.count) % wallpaperList.count
-                } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) {
-                    nextIndex = (oldIndex + 1) % wallpaperList.count
                 }
 
                 WallpaperState.selectedIndex = nextIndex
@@ -443,7 +436,12 @@ PanelWindow {
 
                 if (oldPage !== newPage) {
                     pageSlideAnimation.from = wallpaperList.contentX
-                    pageSlideAnimation.to = newPage * wallpaperList.pageWidth
+
+                    var pageOffset =
+                        newPage * wallpaperList.pageSize *
+                        (wallpaperList.itemWidth + wallpaperList.spacing)
+
+                    pageSlideAnimation.to = pageOffset
                     pageSlideAnimation.start()
                 }
 
@@ -478,6 +476,7 @@ PanelWindow {
                     rightMargin: 24
                 }
 
+                boundsBehavior: Flickable.StopAtBounds
                 height: 105
                 orientation: ListView.Horizontal
                 spacing: 12
