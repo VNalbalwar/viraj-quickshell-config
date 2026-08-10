@@ -1,44 +1,53 @@
 import Quickshell
+import Quickshell.Wayland
 import QtQuick
 import "../theme"
 
-Item {
-    anchors.fill: parent
-    visible: OsdState.visible
-    opacity: OsdState.visible ? 1 : 0
-    scale: OsdState.visible ? 1 : 0.94
-    y: OsdState.visible ? 0 : -6
-    transformOrigin: Item.Top
-    z: 100
+PanelWindow {
+    property var screen
 
-    Behavior on opacity {
-        NumberAnimation {
-            duration: 220
-            easing.type: Easing.OutCubic
-        }
+    anchors {
+        top: true
+        left: true
+        right: true
     }
 
-    Behavior on scale {
-        NumberAnimation {
-            duration: 280
-            easing.type: Easing.OutCubic
-        }
-    }
+    exclusionMode: ExclusionMode.Ignore
+    focusable: false
+    color: "transparent"
+    implicitHeight: 44
 
-    Behavior on y {
-        NumberAnimation {
-            duration: 280
-            easing.type: Easing.OutCubic
-        }
-    }
+    WlrLayershell.layer: WlrLayer.Overlay
 
     Rectangle {
-        anchors.centerIn: parent
+        id: osdPill
+
         width: 260
-        height: 58
-        radius: 29
+        height: 44
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+
+        radius: 22
         color: "#000000"
         antialiasing: true
+
+        opacity: OsdState.visible ? 1 : 0
+        scale: OsdState.visible ? 1 : 0.90
+        transformOrigin: Item.Top
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 220
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        Behavior on scale {
+            NumberAnimation {
+                duration: 300
+                easing.type: Easing.OutCubic
+            }
+        }
 
         Text {
             anchors.centerIn: parent
