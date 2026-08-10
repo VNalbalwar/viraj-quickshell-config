@@ -18,14 +18,14 @@ ShellRoot {
         }
     }
 
-    Variants {
-        model: Quickshell.screens
+    // Variants {
+    //     model: Quickshell.screens
 
-        WallpaperSwitcher {
-            property var modelData
-            screen: modelData
-        }
-    }
+    //     WallpaperSwitcher {
+    //         property var modelData
+    //         screen: modelData
+    //     }
+    // }
 
     Variants {
         model: Quickshell.screens

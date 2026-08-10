@@ -8,6 +8,7 @@ import "../theme"
 PanelWindow {
     property var screen
     property bool barVisible: true
+    property bool wallpaperMode: WallpaperState.visible
 
     anchors {
         top: true
@@ -68,17 +69,17 @@ PanelWindow {
 
     Rectangle {
         id: island
-        
+
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.topMargin: 0
         clip: true
 
-        property bool expanded: hover.hovered
+        property bool expanded: hover.hovered || wallpaperMode
         visible: barVisible
 
-        implicitWidth: expanded ? 680 : 200
-        implicitHeight: expanded ? 130 : 44
+        implicitWidth: wallpaperMode ? 1080 : (expanded ? 680 : 200)
+        implicitHeight: wallpaperMode ? 180 : (expanded ? 130 : 44)
 
         // iPhone-style notch: flat at the screen edge with a restrained,
         // smooth curve only along the bottom edge.
@@ -121,7 +122,7 @@ PanelWindow {
 
         Item {
             anchors.fill: parent
-            opacity: island.expanded ? 1 : 0
+            opacity: island.expanded && !wallpaperMode ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 220 } }
 
             Rectangle {
