@@ -13,6 +13,8 @@ Singleton {
     property bool muted: false
     property string mode: "brightness"
 
+    property bool micMuted: false
+
     function readBrightness() {
         brightnessProcess.running = true
     }
@@ -21,13 +23,24 @@ Singleton {
         volumeProcess.running = true
     }
 
+    function readMicMute() {
+        micMuteProcess.running = true
+    }
+
     function showVolume() {
         root.mode = "volume"
         readVolume()
         root.visible = true
         hideTimer.restart()
     }
-    
+
+    function showMic() {
+        root.mode = "mic"
+        readMicMute()
+        root.visible = true
+        hideTimer.restart()
+    }
+
     function show() {
         readBrightness()
         root.visible = true
@@ -97,6 +110,19 @@ Singleton {
         }
     }
 
+    Process {
+        id: micMuteProcess
+
+        command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"]
+
+        stdout: SplitParser {
+            onRead: data => {
+                var output = data.trim()
+                root.micMuted = output.indexOf("[MUTED]") !== -1
+            }
+        }
+    }
+
     Timer {
         id: hideTimer
         interval: 1800
@@ -112,5 +138,6 @@ Singleton {
         function showBrightness(): void { root.showBrightness() }
         function hide(): void { root.hide() }
         function showVolume(): void { root.showVolume() }
+        function showMic(): void { root.showMic() }
     }
 }

@@ -22,7 +22,11 @@ Item {
         spacing: 12
 
         Text {
-            text: "󰃠"
+            text: OsdState.mode === "mic"
+      ? "󰍬"
+      : OsdState.mode === "volume"
+        ? (OsdState.muted ? "󰖁" : "󰕾")
+        : "󰃠"
             color: Colors.fg
             font {
                 pixelSize: 20
@@ -32,6 +36,7 @@ Item {
         }
 
         Rectangle {
+            visible: OsdState.mode !== "mic"
             width: 340
             height: 6
             radius: 3
@@ -39,7 +44,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             Rectangle {
-                width: parent.width * (OsdState.brightness / 100)
+                width: parent.width * ((OsdState.mode === "volume" ? OsdState.volume : OsdState.brightness) / 100)
                 height: parent.height
                 radius: parent.radius
                 color: Colors.fg
@@ -54,7 +59,11 @@ Item {
         }
 
         Text {
-            text: OsdState.brightness + "%"
+            text: OsdState.mode === "mic"
+      ? (OsdState.micMuted ? "Microphone Muted" : "Microphone On")
+      : ((OsdState.mode === "volume"
+          ? OsdState.volume
+          : OsdState.brightness) + "%")
             color: Colors.fg
             font {
                 pixelSize: 13
