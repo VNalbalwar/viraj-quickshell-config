@@ -23,7 +23,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
-    implicitHeight: 160
+    implicitHeight: wallpaperMode ? 180 : 160
 
     onWallpaperModeChanged: {
         if (wallpaperMode) {
@@ -82,8 +82,8 @@ PanelWindow {
         item: island
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: wallpaperMode ? 48 : (island.expanded ? 34 : 16)
-        bottomRightRadius: wallpaperMode ? 48 : (island.expanded ? 34 : 16)
+        bottomLeftRadius: wallpaperMode ? 34 : (island.expanded ? 34 : 16)
+        bottomRightRadius: wallpaperMode ? 34 : (island.expanded ? 34 : 16)
     }
 
     readonly property var mediaPlayer: {
@@ -132,12 +132,12 @@ PanelWindow {
         implicitWidth: wallpaperMode ? 1080 : (expanded ? 680 : 200)
         implicitHeight: wallpaperMode ? 180 : (expanded ? 130 : 44)
 
-        // Flat top edge, pronounced smooth bottom corners for wallpaper mode.
-        radius: wallpaperMode ? 48 : (expanded ? 34 : 16)
+        // Keep wallpaper mode identical to the normal expanded bar at the bottom.
+        radius: wallpaperMode ? 34 : (expanded ? 34 : 16)
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: wallpaperMode ? 48 : (expanded ? 34 : 16)
-        bottomRightRadius: wallpaperMode ? 48 : (expanded ? 34 : 16)
+        bottomLeftRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
+        bottomRightRadius: wallpaperMode ? 34 : (expanded ? 34 : 16)
         color: "#000000"
 
         Behavior on opacity {
