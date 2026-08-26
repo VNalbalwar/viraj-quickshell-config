@@ -65,6 +65,23 @@ PanelWindow {
         }
     }
 
+    onPowerModeChanged: {
+        if (powerMode) {
+            if (wallpaperMode)
+                WallpaperState.hide()
+
+            if (launcherMode)
+                AppLauncherState.hide()
+
+            barVisible = true
+            wallpaperClosing = false
+
+            Qt.callLater(function() {
+                powerView.forceActiveFocus()
+            })
+        }
+    }
+
     Connections {
         target: OsdState
 
@@ -105,6 +122,11 @@ PanelWindow {
 
             if (launcherMode) {
                 AppLauncherState.hide()
+                return
+            }
+
+            if (powerMode) {
+                PowerState.hide()
                 return
             }
 
@@ -150,8 +172,8 @@ PanelWindow {
         item: island
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
-        bottomRightRadius: (wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
+        bottomLeftRadius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
+        bottomRightRadius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
     }
 
     readonly property var mediaPlayer: {
@@ -271,6 +293,7 @@ PanelWindow {
             anchors.fill: parent
             visible: powerMode
             opacity: powerMode ? 1 : 0
+            focus: powerMode
 
             Behavior on opacity {
                 NumberAnimation {
@@ -278,9 +301,80 @@ PanelWindow {
                 }
             }
 
+            Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Escape) {
+                    PowerState.hide()
+                    event.accepted = true
+                }
+            }
+
             Row {
                 anchors.centerIn: parent
                 spacing: 8
+
+                Repeater {
+                    model: [
+                        { label: "Sleep", icon: "󰒲", action: function() { PowerState.sleep() } },
+                        { label: "Log Out", icon: "󰍃", action: function() { PowerState.logout() } },
+                        { label: "Reboot", icon: "󰜉", action: function() { PowerState.reboot() } },
+                        { label: "Power Off", icon: "󰐥", action: function() { PowerState.powerOff() } }
+                    ]
+
+                    delegate: Rectangle {
+                        width: 116
+                        height: 92
+                        radius: 22
+                        color: powerHover.hovered
+                            ? Colors.alpha(Colors.colFg, 0.14)
+                            : Colors.alpha(Colors.colFg, 0.055)
+                        scale: powerHover.hovered ? 1.045 : 1.0
+
+                        Behavior on color {
+                            ColorAnimation { duration: 120 }
+                        }
+
+                        Behavior on scale {
+                            NumberAnimation {
+                                duration: 170
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        HoverHandler { id: powerHover }
+
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 7
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: modelData.icon
+                                color: powerHover.hovered ? Colors.fg : Colors.alpha(Colors.fg, 0.92)
+                                font {
+                                    family: "JetBrainsMono Nerd Font"
+                                    pixelSize: 23
+                                }
+                            }
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: modelData.label
+                                color: Colors.fg
+                                opacity: powerHover.hovered ? 0.95 : 0.72
+                                font {
+                                    pixelSize: 12
+                                    weight: Font.DemiBold
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: modelData.action()
+                        }
+                    }
+                }
             }
         }
 
