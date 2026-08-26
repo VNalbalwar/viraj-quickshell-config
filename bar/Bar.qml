@@ -8,6 +8,7 @@ import "../wallpaper_switcher"
 import "../app_launcher"
 import "../osd"
 import "../theme"
+import "../lockscreen"
 
 PanelWindow {
     property var screen
@@ -17,6 +18,9 @@ PanelWindow {
     property bool powerMode: PowerState.visible
     property bool wallpaperClosing: false
     property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode && !powerMode
+
+    // Hide the notch entirely while the lockscreen is up (Stage 1 test overlay).
+    visible: !LockState.demoActive
 
     anchors {
         top: true
@@ -295,6 +299,34 @@ PanelWindow {
             opacity: powerMode ? 1 : 0
             focus: powerMode
 
+            property int selectedIndex: 0
+
+            readonly property var powerActions: [
+                { label: "Lock",      icon: "󰌾", trigger: function() { PowerState.lock() } },
+                { label: "Log Out",   icon: "󰍃", trigger: function() { PowerState.logout() } },
+                { label: "Reboot",    icon: "󰜉", trigger: function() { PowerState.reboot() } },
+                { label: "Power Off", icon: "󰐥", trigger: function() { PowerState.powerOff() } }
+            ]
+
+            function navigate(delta) {
+                var count = powerActions.length
+                if (count === 0)
+                    return
+                selectedIndex = (selectedIndex + delta + count) % count
+            }
+
+            function activateSelected() {
+                if (selectedIndex >= 0 && selectedIndex < powerActions.length)
+                    powerActions[selectedIndex].trigger()
+            }
+
+            onVisibleChanged: {
+                if (visible) {
+                    selectedIndex = 0
+                    forceActiveFocus()
+                }
+            }
+
             Behavior on opacity {
                 NumberAnimation {
                     duration: 160
@@ -302,7 +334,16 @@ PanelWindow {
             }
 
             Keys.onPressed: function(event) {
-                if (event.key === Qt.Key_Escape) {
+                if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
+                    navigate(-1)
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) {
+                    navigate(1)
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    activateSelected()
+                    event.accepted = true
+                } else if (event.key === Qt.Key_Escape) {
                     PowerState.hide()
                     event.accepted = true
                 }
@@ -313,21 +354,20 @@ PanelWindow {
                 spacing: 8
 
                 Repeater {
-                    model: [
-                        { label: "Sleep", icon: "󰒲", action: function() { PowerState.sleep() } },
-                        { label: "Log Out", icon: "󰍃", action: function() { PowerState.logout() } },
-                        { label: "Reboot", icon: "󰜉", action: function() { PowerState.reboot() } },
-                        { label: "Power Off", icon: "󰐥", action: function() { PowerState.powerOff() } }
-                    ]
+                    model: powerView.powerActions
 
                     delegate: Rectangle {
+                        id: powerCard
+
+                        readonly property bool selected: index === powerView.selectedIndex
+
                         width: 116
                         height: 92
                         radius: 22
-                        color: powerHover.hovered
-                            ? Colors.alpha(Colors.colFg, 0.14)
+                        color: selected
+                            ? Colors.alpha(Colors.colBlue, 0.34)
                             : Colors.alpha(Colors.colFg, 0.055)
-                        scale: powerHover.hovered ? 1.045 : 1.0
+                        scale: selected ? 1.045 : 1.0
 
                         Behavior on color {
                             ColorAnimation { duration: 120 }
@@ -340,8 +380,6 @@ PanelWindow {
                             }
                         }
 
-                        HoverHandler { id: powerHover }
-
                         Column {
                             anchors.centerIn: parent
                             spacing: 7
@@ -349,7 +387,7 @@ PanelWindow {
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.icon
-                                color: powerHover.hovered ? Colors.fg : Colors.alpha(Colors.fg, 0.92)
+                                color: powerCard.selected ? Colors.fg : Colors.alpha(Colors.fg, 0.92)
                                 font {
                                     family: "JetBrainsMono Nerd Font"
                                     pixelSize: 23
@@ -360,7 +398,7 @@ PanelWindow {
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 text: modelData.label
                                 color: Colors.fg
-                                opacity: powerHover.hovered ? 0.95 : 0.72
+                                opacity: powerCard.selected ? 0.95 : 0.72
                                 font {
                                     pixelSize: 12
                                     weight: Font.DemiBold
@@ -370,8 +408,10 @@ PanelWindow {
 
                         MouseArea {
                             anchors.fill: parent
+                            hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: modelData.action()
+                            onEntered: powerView.selectedIndex = index
+                            onClicked: modelData.trigger()
                         }
                     }
                 }

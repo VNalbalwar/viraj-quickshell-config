@@ -6,6 +6,7 @@ import Quickshell.Io
 import "./bar"
 import "./app_launcher"
 import "./wallpaper_switcher"
+import "./lockscreen"
 
 ShellRoot {
     // ── Original standalone app launcher kept as a safety fallback ─────────
@@ -35,4 +36,19 @@ ShellRoot {
             screen: modelData
         }
     }
+
+    // ── Lockscreen (Stage 1: dismissible test overlay, one per screen) ────────
+    Variants {
+        model: Quickshell.screens
+
+        Lockscreen {
+            property var modelData
+            screen: modelData
+        }
+    }
+
+    // ── Lockscreen (Stage 2: the REAL ext-session-lock) ───────────────────────
+    // Inert until `LockState.locked` flips true (via `qs ipc call lock lock`).
+    // A single instance manages one lock surface per screen automatically.
+    SessionLock {}
 }
