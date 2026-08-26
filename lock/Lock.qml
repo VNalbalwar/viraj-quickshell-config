@@ -20,22 +20,22 @@ PanelWindow {
 
     color: "transparent"
 
+    Image {
+        id: wallpaper
+
+        anchors.fill: parent
+
+        source: "file:///home/viraj/.cache/wallpaper_frame.png"
+        fillMode: Image.PreserveAspectCrop
+
+        asynchronous: true
+        cache: false
+    }
+
     Rectangle {
         anchors.fill: parent
 
         color: Colors.bg1
-    }
-
-    Text {
-        anchors.centerIn: parent
-
-        text: "LOCK SCREEN"
-        color: Colors.fg
-
-        font {
-            family: "JetBrainsMono Nerd Font"
-            pixelSize: 32
-            weight: Font.DemiBold
-        }
+        opacity: 0.55
     }
 }
