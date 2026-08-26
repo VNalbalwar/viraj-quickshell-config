@@ -6,6 +6,7 @@ import Quickshell.Io
 import "./bar"
 import "./app_launcher"
 import "./wallpaper_switcher"
+import "./lock"
 
 ShellRoot {
     // ── Original standalone app launcher kept as a safety fallback ─────────
