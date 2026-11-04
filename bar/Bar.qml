@@ -38,7 +38,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
-    implicitHeight: controlMode ? 290 : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160)))
+    implicitHeight: controlMode ? Ui.height : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160)))
 
     onControlModeChanged: {
         if (controlMode) {
@@ -216,13 +216,29 @@ PanelWindow {
         bottomRightRadius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
     }
 
+    // Any MPRIS player (Spotify, browsers, mpv, VLC...). A player picked by
+    // tapping the label wins; otherwise the one that is playing, then one with
+    // a track loaded, then the first.
+    property var selectedPlayer: null
+
     readonly property var mediaPlayer: {
-        for (var i = 0; i < Mpris.players.values.length; i++) {
-            var p = Mpris.players.values[i]
-            if (p.desktopEntry === "spotify" || p.identity.toLowerCase().indexOf("spotify") !== -1)
-                return p
-        }
-        return null
+        var players = Mpris.players.values
+        if (selectedPlayer && players.indexOf(selectedPlayer) !== -1)
+            return selectedPlayer
+        for (var i = 0; i < players.length; i++)
+            if (players[i].isPlaying) return players[i]
+        for (var j = 0; j < players.length; j++)
+            if (players[j].trackTitle) return players[j]
+        return players.length > 0 ? players[0] : null
+    }
+
+    readonly property bool mediaIsSpotify: mediaPlayer !== null
+        && (mediaPlayer.desktopEntry === "spotify" || mediaPlayer.identity.toLowerCase().indexOf("spotify") !== -1)
+
+    function nextPlayer() {
+        var players = Mpris.players.values
+        if (players.length < 2) return
+        selectedPlayer = players[(players.indexOf(mediaPlayer) + 1) % players.length]
     }
 
     readonly property bool hasMedia: mediaPlayer !== null
@@ -267,7 +283,7 @@ PanelWindow {
 
         implicitWidth:
             powerMode ? 550 :
-            controlMode ? 740 :
+            controlMode ? Ui.width :
             wallpaperMode ? 1080 :
             launcherMode ? 1000 :
             osdMode ? 500 :
@@ -275,7 +291,7 @@ PanelWindow {
 
         implicitHeight:
             powerMode ? 124 :
-            controlMode ? 290 :
+            controlMode ? Ui.height :
             wallpaperMode ? 180 :
             launcherMode ? 240 :
             osdMode ? 44 :
@@ -501,8 +517,8 @@ PanelWindow {
                 Text {
                     anchors.centerIn: parent
                     visible: !mediaPlayer || !mediaPlayer.trackArtUrl
-                    text: "󰓇"
-                    color: "#1ED760"
+                    text: !mediaPlayer || mediaIsSpotify ? "󰓇" : "󰎆"
+                    color: !mediaPlayer || mediaIsSpotify ? "#1ED760" : Colors.colBlue
                     opacity: 1.0
                     font {
                         pixelSize: 38
@@ -524,7 +540,7 @@ PanelWindow {
                 }
                 Text {
                     width: parent.width
-                    text: mediaPlayer ? (mediaPlayer.trackArtist || "Unknown Artist") : "Spotify"
+                    text: mediaPlayer ? (mediaPlayer.trackArtist || "Unknown Artist") : "Play something"
                     color: Colors.grey2
                     elide: Text.ElideRight
                     font { pixelSize: 13 }
@@ -612,12 +628,22 @@ PanelWindow {
                 }
             }
 
+            // which player is shown; tap to cycle when several are running
             Text {
+                id: playerLabel
                 anchors { right: parent.right; bottom: parent.bottom; rightMargin: 17; bottomMargin: 10 }
-                text: mediaPlayer ? "Spotify" : ""
+                text: mediaPlayer ? mediaPlayer.identity + (Mpris.players.values.length > 1 ? "  ›" : "") : ""
                 color: Colors.grey2
-                opacity: 0.45
-                font { pixelSize: 8 }
+                opacity: labelHover.hovered ? 0.9 : 0.45
+                font { pixelSize: 9 }
+                Behavior on opacity { NumberAnimation { duration: 120 } }
+
+                HoverHandler { id: labelHover }
+                MouseArea {
+                    anchors { fill: parent; margins: -6 }
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: nextPlayer()
+                }
             }
         }
 
