@@ -3,9 +3,12 @@ import QtQuick
 import "../theme"
 
 Item {
+    // set false by the notch while another panel (control center, menus) is open
+    property bool allowed: true
+
     anchors.fill: parent
-    visible: OsdState.visible
-    opacity: OsdState.visible ? 1 : 0
+    visible: OsdState.visible && allowed
+    opacity: (OsdState.visible && allowed) ? 1 : 0
     z: 100
 
     Behavior on opacity {

@@ -10,8 +10,10 @@ import "../osd"
 //  menu / launcher). Same language as the rest of the notch: black island,
 //  translucent colFg cards, colBlue for "on", hover pop, springy resize.
 //
-//  Keys   arrows move · Enter toggles · Space/Tab opens a tile's detail page
-//         Esc goes back / closes
+//  Feel    press = squish + ripple, toggles pop their icon, pages slide, list
+//          entries (wifi / bluetooth) animate in/out/reorder as they appear.
+//  Keys    arrows move · Enter toggles · Space/Tab opens a tile's detail page
+//          Esc goes back / closes
 // ─────────────────────────────────────────────────────────────────────────────
 Item {
     id: cc
@@ -20,7 +22,15 @@ Item {
 
     readonly property bool active: ControlState.visible
     readonly property string page: ControlState.page
+    readonly property bool onMain: page === "main"
     readonly property string iconFont: "JetBrainsMono Nerd Font"
+
+    // layout
+    readonly property int sideMargin: 38
+    readonly property int bodyTop: 68
+    readonly property int tileW: 104
+    readonly property int tileH: 96
+    readonly property int gap: 10
 
     visible: active
     opacity: active ? 1 : 0
@@ -50,20 +60,8 @@ Item {
         return n
     }
 
-    readonly property var btDevices: {
-        var list = Bluetooth.devices.values.slice().filter(function(d) {
-            return (d.name || d.deviceName) && (d.paired || d.connected || ControlState.bluetoothAdapter && ControlState.bluetoothAdapter.discovering)
-        })
-        list.sort(function(a, b) {
-            if (a.connected !== b.connected) return a.connected ? -1 : 1
-            if (a.paired !== b.paired) return a.paired ? -1 : 1
-            return (a.name || a.deviceName).localeCompare(b.name || b.deviceName)
-        })
-        return list
-    }
-
-    function wifiIconFor(signal) {
-        return signal >= 75 ? "󰤨" : signal >= 50 ? "󰤥" : signal >= 25 ? "󰤢" : "󰤟"
+    function wifiIconFor(strength) {
+        return strength >= 75 ? "󰤨" : strength >= 50 ? "󰤥" : strength >= 25 ? "󰤢" : "󰤟"
     }
 
     readonly property var tiles: [
@@ -103,7 +101,7 @@ Item {
             icon: "󰓅",
             label: "Power",
             sub: ControlState.profileLabel,
-            on: ControlState.powerProfile !== "balanced",
+            on: ControlState.effectiveProfile !== "balanced",
             detail: "",
             trigger: function() { ControlState.cycleProfile() }
         },
@@ -134,7 +132,6 @@ Item {
     ]
 
     function moveTile(dx, dy) {
-        var count = tiles.length
         var col = selectedTile % 4
         var row = Math.floor(selectedTile / 4)
         col = (col + dx + 4) % 4
@@ -149,10 +146,13 @@ Item {
 
     function activateListItem() {
         if (page === "wifi") {
-            var n = ControlState.wifiNetworks[listIndex]
-            if (n && !n.active) ControlState.connectWifi(n.ssid)
+            if (listIndex < ControlState.wifiModel.count) {
+                var n = ControlState.wifiModel.get(listIndex)
+                if (!n.active) ControlState.connectWifi(n.ssid)
+            }
         } else if (page === "bluetooth") {
-            ControlState.activateBluetoothDevice(btDevices[listIndex])
+            if (listIndex < ControlState.btModel.count)
+                ControlState.activateBluetoothDevice(ControlState.btByAddress[ControlState.btModel.get(listIndex).address])
         }
     }
 
@@ -163,7 +163,7 @@ Item {
             return
         }
 
-        if (page === "main") {
+        if (onMain) {
             if (event.key === Qt.Key_Left) moveTile(-1, 0)
             else if (event.key === Qt.Key_Right) moveTile(1, 0)
             else if (event.key === Qt.Key_Up) moveTile(0, -1)
@@ -173,7 +173,7 @@ Item {
                 if (tiles[selectedTile].detail !== "") ControlState.openPage(tiles[selectedTile].detail)
             } else return
         } else {
-            var count = page === "wifi" ? ControlState.wifiNetworks.length : btDevices.length
+            var count = page === "wifi" ? ControlState.wifiModel.count : ControlState.btModel.count
             if (event.key === Qt.Key_Up) moveList(-1, count)
             else if (event.key === Qt.Key_Down) moveList(1, count)
             else if (event.key === Qt.Key_Left || event.key === Qt.Key_Backspace) ControlState.back()
@@ -184,7 +184,7 @@ Item {
     }
 
     // ── building blocks ──────────────────────────────────────────────────────
-    component Tile: Rectangle {
+    component Tile: ClippingRectangle {
         id: tile
 
         property string icon
@@ -198,34 +198,42 @@ Item {
         signal detailRequested()
         signal entered()
 
-        width: 88
-        height: 88
-        radius: 22
+        width: cc.tileW
+        height: cc.tileH
+        radius: 24
         color: on
             ? Colors.alpha(Colors.colBlue, tileHover.hovered ? 0.44 : 0.34)
             : Colors.alpha(Colors.colFg, tileHover.hovered ? 0.10 : 0.055)
-        scale: tileHover.hovered ? 1.045 : 1.0
+        scale: tileMouse.pressed ? 0.93 : (tileHover.hovered ? 1.045 : 1.0)
         border.width: picked ? 2 : 0
         border.color: Colors.alpha(Colors.colFg, 0.45)
-        antialiasing: true
 
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: 140 } }
+        Behavior on scale { NumberAnimation { duration: 190; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
 
         HoverHandler {
             id: tileHover
             onHoveredChanged: if (hovered) tile.entered()
         }
 
+        Ripple { id: tileRipple }
+
+        SequentialAnimation {
+            id: iconPop
+            NumberAnimation { target: tileIcon; property: "scale"; to: 1.35; duration: 100; easing.type: Easing.OutCubic }
+            NumberAnimation { target: tileIcon; property: "scale"; to: 1.0; duration: 280; easing.type: Easing.OutBack; easing.overshoot: 3 }
+        }
+
         Text {
-            anchors { left: parent.left; top: parent.top; leftMargin: 13; topMargin: 12 }
+            id: tileIcon
+            anchors { left: parent.left; top: parent.top; leftMargin: 15; topMargin: 14 }
             text: tile.icon
             color: Colors.fg
-            font { family: cc.iconFont; pixelSize: 22 }
+            font { family: cc.iconFont; pixelSize: 24 }
         }
 
         Column {
-            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 13; rightMargin: 8; bottomMargin: 10 }
+            anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 15; rightMargin: 10; bottomMargin: 12 }
             spacing: 1
 
             Text {
@@ -233,7 +241,7 @@ Item {
                 text: tile.label
                 color: Colors.fg
                 elide: Text.ElideRight
-                font { pixelSize: 11; weight: Font.DemiBold }
+                font { pixelSize: 12; weight: Font.DemiBold }
             }
             Text {
                 width: parent.width
@@ -241,41 +249,50 @@ Item {
                 color: Colors.fg
                 opacity: 0.55
                 elide: Text.ElideRight
-                font { pixelSize: 10 }
+                font { pixelSize: 11 }
             }
         }
 
+        MouseArea {
+            id: tileMouse
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            cursorShape: Qt.PointingHandCursor
+            onPressed: function(mouse) { tileRipple.start(mouse.x, mouse.y) }
+            onClicked: function(mouse) {
+                if (mouse.button === Qt.RightButton && tile.hasDetail) {
+                    tile.detailRequested()
+                } else {
+                    iconPop.restart()
+                    tile.triggered()
+                }
+            }
+        }
+
+        // chevron chip: opens the detail page (above the tile's own mouse area)
         Rectangle {
             visible: tile.hasDetail
-            anchors { right: parent.right; top: parent.top; rightMargin: 9; topMargin: 9 }
-            width: 24
-            height: 24
-            radius: 12
-            color: chevHover.hovered ? Colors.alpha(Colors.colFg, 0.22) : Colors.alpha(Colors.colFg, 0.10)
+            anchors { right: parent.right; top: parent.top; rightMargin: 10; topMargin: 10 }
+            width: 26
+            height: 26
+            radius: 13
+            color: chevHover.hovered ? Colors.alpha(Colors.colFg, 0.24) : Colors.alpha(Colors.colFg, 0.10)
+            scale: chevMouse.pressed ? 0.85 : 1.0
             Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
 
             Text {
                 anchors.centerIn: parent
                 text: "󰅂"
                 color: Colors.fg
-                font { family: cc.iconFont; pixelSize: 14 }
+                font { family: cc.iconFont; pixelSize: 15 }
             }
             HoverHandler { id: chevHover }
             MouseArea {
+                id: chevMouse
                 anchors.fill: parent
                 cursorShape: Qt.PointingHandCursor
                 onClicked: tile.detailRequested()
-            }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            z: -1
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            cursorShape: Qt.PointingHandCursor
-            onClicked: function(mouse) {
-                if (mouse.button === Qt.RightButton && tile.hasDetail) tile.detailRequested()
-                else tile.triggered()
             }
         }
     }
@@ -290,9 +307,9 @@ Item {
         signal moved(int percent)
         signal iconClicked()
 
-        width: 72
-        height: 184
-        radius: 22
+        width: 86
+        height: cc.tileH * 2 + cc.gap
+        radius: 24
         color: Colors.alpha(Colors.colFg, sliderHover.hovered ? 0.085 : 0.055)
         Behavior on color { ColorAnimation { duration: 120 } }
 
@@ -303,21 +320,25 @@ Item {
             height: parent.height * Math.max(0, Math.min(100, slider.value)) / 100
             color: Colors.alpha(Colors.colBlue, slider.dim ? 0.16 : 0.42)
             Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on height { enabled: !dragArea.pressed; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
         }
 
         Text {
-            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 12 }
+            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 14 }
             text: slider.value + "%"
             color: Colors.fg
             opacity: 0.7
-            font { pixelSize: 11; weight: Font.DemiBold }
+            font { pixelSize: 12; weight: Font.DemiBold }
         }
 
         Text {
-            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 14 }
+            id: sliderIcon
+            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 16 }
             text: slider.icon
             color: Colors.fg
-            font { family: cc.iconFont; pixelSize: 22 }
+            scale: iconZone.pressed ? 0.8 : 1.0
+            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2.5 } }
+            font { family: cc.iconFont; pixelSize: 24 }
         }
 
         MouseArea {
@@ -343,7 +364,7 @@ Item {
             id: iconZone
             z: 1
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
-            height: 52
+            height: 56
             cursorShape: Qt.PointingHandCursor
             onClicked: slider.iconClicked()
         }
@@ -355,30 +376,32 @@ Item {
         property bool on: false
         signal toggled()
 
-        width: 46
-        height: 26
-        radius: 13
+        width: 48
+        height: 28
+        radius: 14
         color: on ? Colors.alpha(Colors.colBlue, 0.55) : Colors.alpha(Colors.colFg, 0.12)
-        Behavior on color { ColorAnimation { duration: 140 } }
+        Behavior on color { ColorAnimation { duration: 160 } }
 
         Rectangle {
-            width: 20
-            height: 20
-            radius: 10
+            width: pillMouse.pressed ? 26 : 22
+            height: 22
+            radius: 11
             y: 3
             x: pill.on ? parent.width - width - 3 : 3
             color: Colors.fg
-            Behavior on x { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+            Behavior on x { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.6 } }
+            Behavior on width { NumberAnimation { duration: 120 } }
         }
 
         MouseArea {
+            id: pillMouse
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
             onClicked: pill.toggled()
         }
     }
 
-    component ListRow: Rectangle {
+    component ListRow: ClippingRectangle {
         id: row
 
         property string icon
@@ -391,26 +414,30 @@ Item {
         signal clicked()
         signal entered()
 
-        height: 46
-        radius: 14
+        height: 48
+        radius: 16
         color: on
             ? Colors.alpha(Colors.colBlue, rowHover.hovered ? 0.40 : 0.30)
             : Colors.alpha(Colors.colFg, rowHover.hovered ? 0.10 : 0.055)
+        scale: rowMouse.pressed ? 0.975 : 1.0
         border.width: picked ? 2 : 0
         border.color: Colors.alpha(Colors.colFg, 0.45)
-        Behavior on color { ColorAnimation { duration: 120 } }
+        Behavior on color { ColorAnimation { duration: 140 } }
+        Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutBack; easing.overshoot: 2 } }
 
         HoverHandler {
             id: rowHover
             onHoveredChanged: if (hovered) row.entered()
         }
 
+        Ripple { id: rowRipple }
+
         Text {
             id: rowIcon
-            anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
+            anchors { left: parent.left; leftMargin: 18; verticalCenter: parent.verticalCenter }
             text: row.icon
             color: Colors.fg
-            font { family: cc.iconFont; pixelSize: 20 }
+            font { family: cc.iconFont; pixelSize: 21 }
         }
 
         Column {
@@ -436,16 +463,18 @@ Item {
 
         Text {
             id: rowTag
-            anchors { right: parent.right; rightMargin: 16; verticalCenter: parent.verticalCenter }
+            anchors { right: parent.right; rightMargin: 18; verticalCenter: parent.verticalCenter }
             text: row.tag
             color: Colors.fg
             opacity: 0.7
-            font { pixelSize: 11; weight: Font.DemiBold }
+            font { family: cc.iconFont; pixelSize: 12; weight: Font.DemiBold }
         }
 
         MouseArea {
+            id: rowMouse
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
+            onPressed: function(mouse) { rowRipple.start(mouse.x, mouse.y) }
             onClicked: row.clicked()
         }
     }
@@ -454,17 +483,29 @@ Item {
         id: btn
 
         property string icon
+        property bool spinOnClick: false
         signal clicked()
 
         width: 34
         height: 34
         radius: 17
         color: btnHover.hovered ? Colors.alpha(Colors.colFg, 0.13) : Colors.alpha(Colors.colFg, 0.05)
-        scale: btnHover.hovered ? 1.08 : 1.0
+        scale: btnMouse.pressed ? 0.88 : (btnHover.hovered ? 1.08 : 1.0)
         Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+
+        NumberAnimation {
+            id: spin
+            target: btnIcon
+            property: "rotation"
+            from: 0
+            to: 360
+            duration: 520
+            easing.type: Easing.OutCubic
+        }
 
         Text {
+            id: btnIcon
             anchors.centerIn: parent
             text: btn.icon
             color: Colors.fg
@@ -472,38 +513,63 @@ Item {
         }
         HoverHandler { id: btnHover }
         MouseArea {
+            id: btnMouse
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: btn.clicked()
+            onClicked: {
+                if (btn.spinOnClick) spin.restart()
+                btn.clicked()
+            }
         }
     }
 
-    // ── header ───────────────────────────────────────────────────────────────
+    // ── header (cross-fades between main and detail pages) ───────────────────
     Item {
         id: header
-        anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: 24; rightMargin: 24; topMargin: 14 }
+        anchors { left: parent.left; right: parent.right; top: parent.top; leftMargin: cc.sideMargin; rightMargin: cc.sideMargin; topMargin: 16 }
         height: 34
 
-        RoundButton {
-            id: backButton
-            visible: cc.page !== "main"
-            icon: "󰁍"
+        Text {
             anchors.verticalCenter: parent.verticalCenter
-            onClicked: ControlState.back()
+            text: "Control Center"
+            color: Colors.fg
+            opacity: cc.onMain ? 1 : 0
+            x: cc.onMain ? 0 : -16
+            font { pixelSize: 16; weight: Font.DemiBold }
+            Behavior on opacity { NumberAnimation { duration: 200 } }
+            Behavior on x { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
         }
 
-        Text {
-            anchors { left: cc.page === "main" ? parent.left : backButton.right; leftMargin: cc.page === "main" ? 0 : 12; verticalCenter: parent.verticalCenter }
-            text: cc.page === "wifi" ? "Wi-Fi" : cc.page === "bluetooth" ? "Bluetooth" : "Control Center"
-            color: Colors.fg
-            font { pixelSize: 16; weight: Font.DemiBold }
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 12
+            opacity: cc.onMain ? 0 : 1
+            x: cc.onMain ? 16 : 0
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: 200 } }
+            Behavior on x { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+
+            RoundButton {
+                icon: "󰁍"
+                onClicked: ControlState.back()
+            }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: cc.page === "wifi" ? "Wi-Fi" : "Bluetooth"
+                color: Colors.fg
+                font { pixelSize: 16; weight: Font.DemiBold }
+            }
         }
 
         // main: battery + power
         Row {
-            visible: cc.page === "main"
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
             spacing: 12
+            opacity: cc.onMain ? 1 : 0
+            x: cc.onMain ? 0 : 16
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: 200 } }
 
             Row {
                 anchors.verticalCenter: parent.verticalCenter
@@ -532,13 +598,16 @@ Item {
 
         // detail pages: rescan + enable switch
         Row {
-            visible: cc.page !== "main"
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
             spacing: 12
+            opacity: cc.onMain ? 0 : 1
+            visible: opacity > 0.01
+            Behavior on opacity { NumberAnimation { duration: 200 } }
 
             RoundButton {
                 icon: "󰑐"
-                onClicked: cc.page === "wifi" ? ControlState.scanWifi() : ControlState.setBluetoothScan(true)
+                spinOnClick: true
+                onClicked: cc.page === "wifi" ? ControlState.rescanWifi() : ControlState.setBluetoothScan(true)
             }
 
             Pill {
@@ -550,129 +619,212 @@ Item {
     }
 
     // ── main page: tile grid + vertical sliders ──────────────────────────────
-    Row {
-        id: mainBody
-        visible: cc.page === "main"
-        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 62 }
-        spacing: 14
-
-        Grid {
-            columns: 4
-            spacing: 8
-
-            Repeater {
-                model: cc.tiles
-
-                delegate: Tile {
-                    required property var modelData
-                    required property int index
-
-                    icon: modelData.icon
-                    label: modelData.label
-                    sub: modelData.sub
-                    on: modelData.on
-                    hasDetail: modelData.detail !== ""
-                    picked: index === cc.selectedTile
-
-                    onEntered: cc.selectedTile = index
-                    onTriggered: modelData.trigger()
-                    onDetailRequested: ControlState.openPage(modelData.detail)
-                }
-            }
-        }
+    Item {
+        id: mainPage
+        width: parent.width
+        height: parent.height
+        opacity: cc.onMain ? 1 : 0
+        x: cc.onMain ? 0 : -56
+        visible: opacity > 0.01
+        enabled: cc.onMain
+        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on x { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
 
         Row {
-            spacing: 8
+            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: cc.bodyTop }
+            spacing: 18
 
-            VSlider {
-                value: OsdState.brightness
-                icon: "󰃠"
-                onMoved: function(percent) { ControlState.setBrightness(percent) }
+            Grid {
+                columns: 4
+                spacing: cc.gap
+
+                Repeater {
+                    model: cc.tiles
+
+                    delegate: Tile {
+                        required property var modelData
+                        required property int index
+
+                        icon: modelData.icon
+                        label: modelData.label
+                        sub: modelData.sub
+                        on: modelData.on
+                        hasDetail: modelData.detail !== ""
+                        picked: index === cc.selectedTile
+
+                        onEntered: cc.selectedTile = index
+                        onTriggered: modelData.trigger()
+                        onDetailRequested: ControlState.openPage(modelData.detail)
+                    }
+                }
             }
 
-            VSlider {
-                value: OsdState.muted ? 0 : OsdState.volume
-                dim: OsdState.muted
-                icon: OsdState.muted ? "󰖁" : "󰕾"
-                onMoved: function(percent) { ControlState.setVolume(percent) }
-                onIconClicked: ControlState.toggleMute()
+            Row {
+                spacing: cc.gap
+
+                VSlider {
+                    value: OsdState.brightness
+                    icon: "󰃠"
+                    onMoved: function(percent) { ControlState.setBrightness(percent) }
+                }
+
+                VSlider {
+                    value: OsdState.muted ? 0 : OsdState.volume
+                    dim: OsdState.muted
+                    icon: OsdState.muted ? "󰖁" : "󰕾"
+                    onMoved: function(percent) { ControlState.setVolume(percent) }
+                    onIconClicked: ControlState.toggleMute()
+                }
             }
         }
     }
 
-    // ── wifi page ────────────────────────────────────────────────────────────
-    ListView {
-        id: wifiList
-        visible: cc.page === "wifi"
-        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom; leftMargin: 24; rightMargin: 24; topMargin: 62; bottomMargin: 20 }
-        spacing: 6
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        model: ControlState.wifiNetworks
-        currentIndex: cc.listIndex
-        onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
-
-        delegate: ListRow {
-            required property var modelData
-            required property int index
-
-            width: wifiList.width
-            icon: cc.wifiIconFor(modelData.signal)
-            title: modelData.ssid
-            subtitle: modelData.active ? "Connected" : (modelData.secure ? "Secured" : "Open")
-            tag: ControlState.wifiConnecting === modelData.ssid ? "Connecting…" : (modelData.secure ? "󰌾" : "")
-            on: modelData.active
-            picked: index === cc.listIndex
-
-            onEntered: cc.listIndex = index
-            onClicked: if (!modelData.active) ControlState.connectWifi(modelData.ssid)
+    // shared list animations: new entries pop in (staggered on first open),
+    // removed ones shrink away, the rest glide to their new spot.
+    readonly property Transition listAdd: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 300; easing.type: Easing.OutCubic }
+            NumberAnimation { property: "scale"; from: 0.82; to: 1; duration: 380; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
         }
+    }
 
-        Text {
-            anchors.centerIn: parent
-            visible: wifiList.count === 0
-            text: !OsdState.wifiEnabled ? "Wi-Fi is off" : (ControlState.wifiScanning ? "Scanning…" : "No networks found")
-            color: Colors.fg
-            opacity: 0.5
-            font.pixelSize: 13
+    readonly property Transition listPopulate: Transition {
+        SequentialAnimation {
+            PauseAnimation { duration: ViewTransition.index * 45 }
+            ParallelAnimation {
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 300; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "y"; from: ViewTransition.destination.y + 14; to: ViewTransition.destination.y; duration: 340; easing.type: Easing.OutCubic }
+            }
+        }
+    }
+
+    readonly property Transition listRemove: Transition {
+        ParallelAnimation {
+            NumberAnimation { property: "opacity"; to: 0; duration: 200; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; to: 0.85; duration: 200; easing.type: Easing.InCubic }
+        }
+    }
+
+    readonly property Transition listDisplaced: Transition {
+        NumberAnimation { properties: "x,y"; duration: 300; easing.type: Easing.OutCubic }
+        NumberAnimation { property: "opacity"; to: 1; duration: 1 }
+        NumberAnimation { property: "scale"; to: 1; duration: 1 }
+    }
+
+    // ── wifi page ────────────────────────────────────────────────────────────
+    Item {
+        id: wifiPage
+        readonly property bool shown: cc.page === "wifi"
+        width: parent.width
+        height: parent.height
+        opacity: shown ? 1 : 0
+        x: shown ? 0 : 56
+        visible: opacity > 0.01
+        enabled: shown
+        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on x { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
+
+        ListView {
+            id: wifiList
+            anchors { fill: parent; leftMargin: cc.sideMargin; rightMargin: cc.sideMargin; topMargin: cc.bodyTop; bottomMargin: 22 }
+            spacing: 7
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            model: ControlState.wifiModel
+            currentIndex: cc.listIndex
+            onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+
+            add: cc.listAdd
+            populate: cc.listPopulate
+            remove: cc.listRemove
+            displaced: cc.listDisplaced
+
+            delegate: ListRow {
+                required property string ssid
+                required property bool active
+                required property int strength
+                required property bool secure
+                required property int index
+
+                width: wifiList.width
+                icon: cc.wifiIconFor(strength)
+                title: ssid
+                subtitle: active ? "Connected" : (secure ? "Secured" : "Open")
+                tag: ControlState.wifiConnecting === ssid ? "Connecting…" : (secure ? "󰌾" : "")
+                on: active
+                picked: index === cc.listIndex
+
+                onEntered: cc.listIndex = index
+                onClicked: if (!active) ControlState.connectWifi(ssid)
+            }
+
+            Text {
+                anchors.centerIn: parent
+                visible: wifiList.count === 0
+                text: !OsdState.wifiEnabled ? "Wi-Fi is off" : (ControlState.wifiScanning ? "Scanning…" : "No networks found")
+                color: Colors.fg
+                opacity: 0.5
+                font.pixelSize: 13
+            }
         }
     }
 
     // ── bluetooth page ───────────────────────────────────────────────────────
-    ListView {
-        id: btList
-        visible: cc.page === "bluetooth"
-        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom; leftMargin: 24; rightMargin: 24; topMargin: 62; bottomMargin: 20 }
-        spacing: 6
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        model: cc.btDevices
-        currentIndex: cc.listIndex
-        onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+    Item {
+        id: btPage
+        readonly property bool shown: cc.page === "bluetooth"
+        width: parent.width
+        height: parent.height
+        opacity: shown ? 1 : 0
+        x: shown ? 0 : 56
+        visible: opacity > 0.01
+        enabled: shown
+        Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Behavior on x { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
 
-        delegate: ListRow {
-            required property var modelData
-            required property int index
+        ListView {
+            id: btList
+            anchors { fill: parent; leftMargin: cc.sideMargin; rightMargin: cc.sideMargin; topMargin: cc.bodyTop; bottomMargin: 22 }
+            spacing: 7
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            model: ControlState.btModel
+            currentIndex: cc.listIndex
+            onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
 
-            width: btList.width
-            icon: modelData.connected ? "󰂱" : "󰂯"
-            title: modelData.name || modelData.deviceName
-            subtitle: modelData.connected ? "Connected" : (modelData.paired ? "Paired" : "Available")
-            tag: modelData.batteryAvailable ? Math.round(modelData.battery * 100) + "%" : ""
-            on: modelData.connected
-            picked: index === cc.listIndex
+            add: cc.listAdd
+            populate: cc.listPopulate
+            remove: cc.listRemove
+            displaced: cc.listDisplaced
 
-            onEntered: cc.listIndex = index
-            onClicked: ControlState.activateBluetoothDevice(modelData)
-        }
+            delegate: ListRow {
+                id: btRow
 
-        Text {
-            anchors.centerIn: parent
-            visible: btList.count === 0
-            text: !ControlState.bluetoothEnabled ? "Bluetooth is off" : "Searching for devices…"
-            color: Colors.fg
-            opacity: 0.5
-            font.pixelSize: 13
+                required property string address
+                required property int index
+
+                readonly property var dev: ControlState.btByAddress[address]
+
+                width: btList.width
+                icon: dev && dev.connected ? "󰂱" : "󰂯"
+                title: dev ? (dev.name || dev.deviceName) : ""
+                subtitle: dev ? (dev.connected ? "Connected" : (dev.paired ? "Paired" : "Available")) : ""
+                tag: dev && dev.batteryAvailable ? Math.round(dev.battery * 100) + "%" : ""
+                on: dev ? dev.connected : false
+                picked: index === cc.listIndex
+
+                onEntered: cc.listIndex = index
+                onClicked: ControlState.activateBluetoothDevice(dev)
+            }
+
+            Text {
+                anchors.centerIn: parent
+                visible: btList.count === 0
+                text: !ControlState.bluetoothEnabled ? "Bluetooth is off" : "Searching for devices…"
+                color: Colors.fg
+                opacity: 0.5
+                font.pixelSize: 13
+            }
         }
     }
 }

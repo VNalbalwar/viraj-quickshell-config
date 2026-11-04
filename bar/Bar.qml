@@ -38,7 +38,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
-    implicitHeight: controlMode ? 270 : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160)))
+    implicitHeight: controlMode ? 290 : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160)))
 
     onControlModeChanged: {
         if (controlMode) {
@@ -267,7 +267,7 @@ PanelWindow {
 
         implicitWidth:
             powerMode ? 550 :
-            controlMode ? 600 :
+            controlMode ? 740 :
             wallpaperMode ? 1080 :
             launcherMode ? 1000 :
             osdMode ? 500 :
@@ -275,7 +275,7 @@ PanelWindow {
 
         implicitHeight:
             powerMode ? 124 :
-            controlMode ? 270 :
+            controlMode ? 290 :
             wallpaperMode ? 180 :
             launcherMode ? 240 :
             osdMode ? 44 :
@@ -326,8 +326,11 @@ PanelWindow {
             Behavior on opacity { NumberAnimation { duration: 150 } }
         }
 
+        // The OSD only owns the notch when no other panel is open; otherwise it
+        // used to draw its icons right on top of the control center / menus.
         Osd {
             anchors.fill: parent
+            allowed: !powerMode && !wallpaperMode && !launcherMode && !controlMode
         }
 
         ControlCenter {

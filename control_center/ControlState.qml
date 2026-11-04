@@ -12,9 +12,14 @@ import "../wallpaper_switcher"
 //
 //  Brightness / volume / mic / battery / wifi status are shared with OsdState
 //  (it already tracks them), so the OSD and the control center never disagree.
-//  Everything else (DND, airplane, power profile, wifi scan) lives here.
+//  Everything else (DND, airplane, power profile, wifi + bluetooth lists) lives
+//  here.
 //
-//    qs ipc call control toggle | show | hide
+//  The wifi / bluetooth lists are ListModels that are DIFF-synced (insert /
+//  move / remove / update in place) instead of replaced, so the list updates
+//  live in the background and new entries animate in without any flicker.
+//
+//    qs ipc call control toggle | hide
 //    qs ipc call control page wifi | bluetooth | main
 // ─────────────────────────────────────────────────────────────────────────────
 Singleton {
@@ -26,18 +31,34 @@ Singleton {
 
     property bool dnd: false
     property bool airplane: false
-    property string powerProfile: "balanced"
-    property var wifiNetworks: []
+    property string powerProfile: "balanced"   // power-profiles-daemon view
+    property string platformProfile: ""        // raw ACPI platform_profile ("" = not exposed)
     property bool wifiScanning: false
+    property string wifiConnecting: ""
+
+    readonly property alias wifiModel: wifiListModel
+    readonly property alias btModel: btListModel
+    property var btByAddress: ({})
 
     readonly property var bluetoothAdapter: Bluetooth.defaultAdapter
     readonly property bool bluetoothEnabled: bluetoothAdapter ? bluetoothAdapter.enabled : false
 
     readonly property var profiles: ["power-saver", "balanced", "performance"]
-    readonly property string profileLabel:
-        powerProfile === "power-saver" ? "Saver"
-        : powerProfile === "performance" ? "Performance"
-        : "Balanced"
+    readonly property string effectiveProfile: platformProfile !== "" ? platformProfile : powerProfile
+    readonly property string profileLabel: profileName(effectiveProfile)
+
+    function profileName(p) {
+        switch (p) {
+        case "low-power":
+        case "power-saver": return "Saver"
+        case "quiet": return "Quiet"
+        case "balanced": return "Balanced"
+        case "balanced-performance": return "Balanced+"
+        case "performance": return "Performance"
+        case "turbo": return "Turbo"
+        default: return p
+        }
+    }
 
     // ── visibility ───────────────────────────────────────────────────────────
     function show() {
@@ -64,7 +85,12 @@ Singleton {
     function openPage(name) {
         root.page = name
         root.setBluetoothScan(name === "bluetooth")
-        if (name === "wifi") root.scanWifi()
+        if (name === "wifi") {
+            root.scanWifi()
+            root.rescanWifi()
+        } else if (name === "bluetooth") {
+            root.syncBluetooth()
+        }
     }
 
     function back() {
@@ -81,6 +107,7 @@ Singleton {
         dndReadProcess.running = true
         airplaneReadProcess.running = true
         profileReadProcess.running = true
+        platformProfileProcess.running = true
     }
 
     // ── sliders (written throttled so dragging stays smooth) ─────────────────
@@ -140,7 +167,11 @@ Singleton {
     Process {
         id: actionProcess
         property var afterExit: function() {}
-        onExited: afterExit()
+        onExited: function(code) { afterExit(code) }
+    }
+
+    function notify(title, body) {
+        Quickshell.execDetached(["notify-send", title, body])
     }
 
     function toggleMute() {
@@ -154,7 +185,10 @@ Singleton {
     function toggleWifi() {
         runAction(["nmcli", "radio", "wifi", OsdState.wifiEnabled ? "off" : "on"], function() {
             OsdState.updateWifi()
-            if (root.page === "wifi") root.scanWifi()
+            if (root.page === "wifi") {
+                root.scanWifi()
+                root.rescanWifi()
+            }
         })
     }
 
@@ -177,7 +211,11 @@ Singleton {
 
     function cycleProfile() {
         var next = root.profiles[(root.profiles.indexOf(root.powerProfile) + 1) % root.profiles.length]
-        runAction(["powerprofilesctl", "set", next], function() { profileReadProcess.running = true })
+        runAction(["powerprofilesctl", "set", next], function(code) {
+            profileReadProcess.running = true
+            platformProfileProcess.running = true
+            if (code !== 0) root.notify("Power profile", "Couldn't switch to " + next)
+        })
     }
 
     function openWallpapers() {
@@ -196,10 +234,59 @@ Singleton {
         onTriggered: Quickshell.execDetached(["hyprshot", "-m", "region"])
     }
 
+    // ── generic diff-sync for the animated lists ─────────────────────────────
+    // `items` is the desired, already-sorted list; `key` names the identity field.
+    function syncModel(model, key, items) {
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i]
+            var found = -1
+            for (var j = i; j < model.count; j++) {
+                if (model.get(j)[key] === item[key]) { found = j; break }
+            }
+            if (found < 0) {
+                model.insert(i, item)
+            } else {
+                if (found !== i) model.move(found, i, 1)
+                model.set(i, item)
+            }
+        }
+        while (model.count > items.length)
+            model.remove(model.count - 1)
+    }
+
     // ── bluetooth (native Quickshell.Bluetooth) ──────────────────────────────
+    ListModel { id: btListModel }
+
     function setBluetoothScan(on) {
-        if (root.bluetoothAdapter && root.bluetoothAdapter.enabled)
+        if (root.bluetoothAdapter && root.bluetoothAdapter.enabled && root.bluetoothAdapter.discovering !== on)
             root.bluetoothAdapter.discovering = on
+    }
+
+    function syncBluetooth() {
+        var adapter = root.bluetoothAdapter
+        var discovering = adapter && adapter.discovering
+        var devices = Bluetooth.devices.values
+        var map = {}
+        var list = []
+
+        for (var i = 0; i < devices.length; i++) {
+            var d = devices[i]
+            var name = d.name || d.deviceName
+            if (!name || !(d.paired || d.connected || discovering)) continue
+            // unpaired beacons advertise their MAC as a "name" — just noise
+            if (!d.paired && !d.connected && /^([0-9A-Fa-f]{2}[-:]){5}[0-9A-Fa-f]{2}$/.test(name)) continue
+            map[d.address] = d
+            list.push({ address: d.address, sortName: name, sortConnected: d.connected, sortPaired: d.paired })
+        }
+
+        list.sort(function(a, b) {
+            if (a.sortConnected !== b.sortConnected) return a.sortConnected ? -1 : 1
+            if (a.sortPaired !== b.sortPaired) return a.sortPaired ? -1 : 1
+            return a.sortName.localeCompare(b.sortName)
+        })
+
+        root.btByAddress = map
+        root.syncModel(btListModel, "address", list.map(function(e) { return { address: e.address } }))
     }
 
     function activateBluetoothDevice(device) {
@@ -209,15 +296,38 @@ Singleton {
         else device.connect()
     }
 
+    // live: keep the list in step with BlueZ and keep discovery running
+    Timer {
+        interval: 600
+        repeat: true
+        running: root.visible && root.page === "bluetooth"
+        onTriggered: root.syncBluetooth()
+    }
+
+    Timer {
+        interval: 5000
+        repeat: true
+        running: root.visible && root.page === "bluetooth"
+        onTriggered: root.setBluetoothScan(true)
+    }
+
     // ── wifi list ────────────────────────────────────────────────────────────
+    ListModel { id: wifiListModel }
+
     function scanWifi() {
         if (!OsdState.wifiEnabled) {
-            root.wifiNetworks = []
+            root.syncModel(wifiListModel, "ssid", [])
             return
         }
+        wifiListProcess.running = false
+        wifiListProcess.running = true
+    }
+
+    function rescanWifi() {
+        if (!OsdState.wifiEnabled) return
         root.wifiScanning = true
-        wifiScanProcess.running = false
-        wifiScanProcess.running = true
+        wifiRescanProcess.running = false
+        wifiRescanProcess.running = true
     }
 
     function connectWifi(ssid) {
@@ -228,40 +338,51 @@ Singleton {
         wifiConnectProcess.running = true
     }
 
-    property string wifiConnecting: ""
+    function parseWifi(text) {
+        var best = {}
+        var lines = text.trim().length > 0 ? text.trim().split("\n") : []
+        for (var i = 0; i < lines.length; i++) {
+            // nmcli -t escapes ':' inside values as '\:'
+            var parts = lines[i].replace(/\\:/g, "\u0001").split(":")
+            if (parts.length < 4) continue
+            var ssid = parts[1].replace(/\u0001/g, ":")
+            if (ssid === "") continue
+            var entry = {
+                ssid: ssid,
+                active: parts[0] === "*",
+                strength: parseInt(parts[2]) || 0,
+                secure: parts[3] !== "" && parts[3] !== "--"
+            }
+            var old = best[ssid]
+            if (!old || entry.active || (!old.active && entry.strength > old.strength))
+                best[ssid] = entry
+        }
+        var list = Object.keys(best).map(function(k) { return best[k] })
+        // bucketed strength keeps the order calm while signals jitter by a few %
+        list.sort(function(a, b) {
+            if (a.active !== b.active) return a.active ? -1 : 1
+            var ba = Math.floor(a.strength / 20), bb = Math.floor(b.strength / 20)
+            if (ba !== bb) return bb - ba
+            return a.ssid.localeCompare(b.ssid)
+        })
+        return list
+    }
 
     Process {
-        id: wifiScanProcess
-        command: ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "auto"]
+        id: wifiListProcess
+        command: ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "no"]
         stdout: StdioCollector {
-            onStreamFinished: {
-                var best = {}
-                var lines = text.trim().length > 0 ? text.trim().split("\n") : []
-                for (var i = 0; i < lines.length; i++) {
-                    // nmcli -t escapes ':' inside values as '\:'
-                    var parts = lines[i].replace(/\\:/g, "\u0001").split(":")
-                    if (parts.length < 4) continue
-                    var ssid = parts[1].replace(/\u0001/g, ":")
-                    if (ssid === "") continue
-                    var entry = {
-                        ssid: ssid,
-                        active: parts[0] === "*",
-                        signal: parseInt(parts[2]) || 0,
-                        secure: parts[3] !== "" && parts[3] !== "--"
-                    }
-                    var old = best[ssid]
-                    if (!old || entry.active || (!old.active && entry.signal > old.signal))
-                        best[ssid] = entry
-                }
-                var list = Object.keys(best).map(function(k) { return best[k] })
-                list.sort(function(a, b) {
-                    if (a.active !== b.active) return a.active ? -1 : 1
-                    return b.signal - a.signal
-                })
-                root.wifiNetworks = list
-            }
+            onStreamFinished: root.syncModel(wifiListModel, "ssid", root.parseWifi(text))
         }
-        onExited: root.wifiScanning = false
+    }
+
+    Process {
+        id: wifiRescanProcess
+        command: ["nmcli", "device", "wifi", "rescan"]
+        onExited: {
+            root.wifiScanning = false
+            root.scanWifi()
+        }
     }
 
     Process {
@@ -272,8 +393,23 @@ Singleton {
             OsdState.updateWifi()
             root.scanWifi()
             if (code !== 0)
-                Quickshell.execDetached(["notify-send", "Wi-Fi", "Couldn't connect to " + ssid + " (new secured network? connect once with nmtui)"])
+                root.notify("Wi-Fi", "Couldn't connect to " + ssid + " (new secured network? connect once with nmtui)")
         }
+    }
+
+    // live: cached list every couple of seconds, a real radio rescan every 12s
+    Timer {
+        interval: 2500
+        repeat: true
+        running: root.visible && root.page === "wifi"
+        onTriggered: root.scanWifi()
+    }
+
+    Timer {
+        interval: 12000
+        repeat: true
+        running: root.visible && root.page === "wifi"
+        onTriggered: root.rescanWifi()
     }
 
     // ── state readers ────────────────────────────────────────────────────────
@@ -301,20 +437,21 @@ Singleton {
         stdout: SplitParser { onRead: data => { if (data.trim()) root.powerProfile = data.trim() } }
     }
 
+    // The Predator's hardware mode key moves ACPI platform_profile directly, so
+    // read that too — it's the truth. (Only exists while linuwu_sense is loaded.)
+    Process {
+        id: platformProfileProcess
+        command: ["cat", "/sys/firmware/acpi/platform_profile"]
+        stdout: SplitParser { onRead: data => root.platformProfile = data.trim() }
+        onExited: function(code) { if (code !== 0) root.platformProfile = "" }
+    }
+
     // keep values live while the panel is open (but never fight a slider drag)
     Timer {
         interval: 1500
         repeat: true
         running: root.visible && !root.adjusting
         onTriggered: root.refresh()
-    }
-
-    // wifi list refresh while the wifi page is open
-    Timer {
-        interval: 8000
-        repeat: true
-        running: root.visible && root.page === "wifi"
-        onTriggered: root.scanWifi()
     }
 
     IpcHandler {
