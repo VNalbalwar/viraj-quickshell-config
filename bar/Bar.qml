@@ -9,6 +9,7 @@ import "../app_launcher"
 import "../osd"
 import "../theme"
 import "../lockscreen"
+import "../control_center"
 
 PanelWindow {
     property var screen
@@ -16,8 +17,9 @@ PanelWindow {
     property bool wallpaperMode: WallpaperState.visible
     property bool launcherMode: AppLauncherState.launcherVisible
     property bool powerMode: PowerState.visible
+    property bool controlMode: ControlState.visible
     property bool wallpaperClosing: false
-    property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode && !powerMode
+    property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode && !powerMode && !controlMode
 
     // Hide the notch entirely while the lockscreen is up (Stage 1 test overlay).
     visible: !LockState.demoActive
@@ -29,14 +31,34 @@ PanelWindow {
     }
 
     focusable: true
-    WlrLayershell.keyboardFocus: (powerMode || wallpaperMode || launcherMode)
+    WlrLayershell.keyboardFocus: (powerMode || wallpaperMode || launcherMode || controlMode)
         ? WlrKeyboardFocus.Exclusive
         : WlrKeyboardFocus.None
 
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
-    implicitHeight: wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160))
+    implicitHeight: controlMode ? 270 : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160)))
+
+    onControlModeChanged: {
+        if (controlMode) {
+            if (wallpaperMode)
+                WallpaperState.hide()
+
+            if (launcherMode)
+                AppLauncherState.hide()
+
+            if (powerMode)
+                PowerState.hide()
+
+            barVisible = true
+            wallpaperClosing = false
+
+            Qt.callLater(function() {
+                controlView.forceActiveFocus()
+            })
+        }
+    }
 
     onWallpaperModeChanged: {
         if (wallpaperMode) {
@@ -45,6 +67,9 @@ PanelWindow {
 
             if (powerMode)
                 PowerState.hide()
+
+            if (controlMode)
+                ControlState.hide()
 
             Qt.callLater(function() {
                 wallpaperView.forceActiveFocus()
@@ -59,6 +84,9 @@ PanelWindow {
 
             if (powerMode)
                 PowerState.hide()
+
+            if (controlMode)
+                ControlState.hide()
 
             barVisible = true
             wallpaperClosing = false
@@ -76,6 +104,9 @@ PanelWindow {
 
             if (launcherMode)
                 AppLauncherState.hide()
+
+            if (controlMode)
+                ControlState.hide()
 
             barVisible = true
             wallpaperClosing = false
@@ -134,6 +165,11 @@ PanelWindow {
                 return
             }
 
+            if (controlMode) {
+                ControlState.hide()
+                return
+            }
+
             barVisible = false
         }
 
@@ -176,8 +212,8 @@ PanelWindow {
         item: island
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
-        bottomRightRadius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
+        bottomLeftRadius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
+        bottomRightRadius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
     }
 
     readonly property var mediaPlayer: {
@@ -219,6 +255,7 @@ PanelWindow {
 
         property bool expanded:
             powerMode
+            || controlMode
             || wallpaperMode
             || launcherMode
             || osdMode
@@ -230,6 +267,7 @@ PanelWindow {
 
         implicitWidth:
             powerMode ? 550 :
+            controlMode ? 600 :
             wallpaperMode ? 1080 :
             launcherMode ? 1000 :
             osdMode ? 500 :
@@ -237,16 +275,17 @@ PanelWindow {
 
         implicitHeight:
             powerMode ? 124 :
+            controlMode ? 270 :
             wallpaperMode ? 180 :
             launcherMode ? 240 :
             osdMode ? 44 :
             (expanded ? 130 : 44)
 
-        radius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        radius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
-        bottomRightRadius: (powerMode || wallpaperMode || launcherMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        bottomLeftRadius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        bottomRightRadius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
 
         color: "#000000"
 
@@ -289,6 +328,12 @@ PanelWindow {
 
         Osd {
             anchors.fill: parent
+        }
+
+        ControlCenter {
+            id: controlView
+            anchors.fill: parent
+            onPowerRequested: PowerState.show()
         }
 
         Item {
@@ -422,6 +467,7 @@ PanelWindow {
             anchors.fill: parent
             opacity: island.expanded
                 && !powerMode
+                && !controlMode
                 && !wallpaperMode
                 && !launcherMode
                 && !osdMode ? 1 : 0
