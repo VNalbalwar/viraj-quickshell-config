@@ -108,6 +108,7 @@ Singleton {
         airplaneReadProcess.running = true
         profileReadProcess.running = true
         platformProfileProcess.running = true
+        profileHelperProcess.running = true
     }
 
     // ── sliders (written throttled so dragging stays smooth) ─────────────────
@@ -209,9 +210,25 @@ Singleton {
         dndToggleProcess.running = true
     }
 
+    // The Predator mode key cycles these four platform_profile values. Writing
+    // platform_profile needs root, so when the polkit-whitelisted helper is
+    // installed we cycle the same four; otherwise fall back to the three
+    // power-profiles-daemon profiles.
+    readonly property var keyCycle: ["quiet", "balanced", "balanced-performance", "performance"]
+    readonly property string profileHelperPath: "/usr/local/bin/predator-profile"
+    property bool profileHelper: false
+
     function cycleProfile() {
-        var next = root.profiles[(root.profiles.indexOf(root.powerProfile) + 1) % root.profiles.length]
-        runAction(["powerprofilesctl", "set", next], function(code) {
+        var command, next
+        if (root.profileHelper && root.platformProfile !== "") {
+            // low-power (not on the key's cycle) rejoins at the start
+            next = root.keyCycle[(root.keyCycle.indexOf(root.platformProfile) + 1) % root.keyCycle.length]
+            command = ["pkexec", root.profileHelperPath, next]
+        } else {
+            next = root.profiles[(root.profiles.indexOf(root.powerProfile) + 1) % root.profiles.length]
+            command = ["powerprofilesctl", "set", next]
+        }
+        runAction(command, function(code) {
             profileReadProcess.running = true
             platformProfileProcess.running = true
             if (code !== 0) root.notify("Power profile", "Couldn't switch to " + next)
@@ -444,6 +461,12 @@ Singleton {
         command: ["cat", "/sys/firmware/acpi/platform_profile"]
         stdout: SplitParser { onRead: data => root.platformProfile = data.trim() }
         onExited: function(code) { if (code !== 0) root.platformProfile = "" }
+    }
+
+    Process {
+        id: profileHelperProcess
+        command: ["test", "-x", root.profileHelperPath]
+        onExited: function(code) { root.profileHelper = (code === 0) }
     }
 
     // keep values live while the panel is open (but never fight a slider drag)

@@ -1,0 +1,21 @@
+#!/bin/sh
+# predator-profile <profile>
+# Sets the ACPI platform_profile (what the Predator mode key changes).
+# Only accepts a value the kernel itself lists in platform_profile_choices,
+# so the polkit rule that allows it can't be abused to write anything else.
+set -eu
+
+P=/sys/firmware/acpi/platform_profile
+want="${1:-}"
+
+[ -n "$want" ] || { echo "usage: predator-profile <profile>" >&2; exit 2; }
+
+for choice in $(cat "${P}_choices"); do
+    if [ "$choice" = "$want" ]; then
+        printf '%s\n' "$want" > "$P"
+        exit 0
+    fi
+done
+
+echo "predator-profile: '$want' is not one of: $(cat "${P}_choices")" >&2
+exit 2

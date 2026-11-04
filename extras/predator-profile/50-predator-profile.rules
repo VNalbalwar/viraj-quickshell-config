@@ -1,0 +1,10 @@
+// Let viraj's active local session run /usr/local/bin/predator-profile via
+// pkexec without a password prompt (quickshell control center's Power tile).
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.policykit.exec" &&
+        action.lookup("program") == "/usr/local/bin/predator-profile" &&
+        subject.user == "viraj" &&
+        subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});
