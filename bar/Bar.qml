@@ -686,43 +686,18 @@ PanelWindow {
             property string searchQuery: ""
             property int selectedIndex: 0
 
-            property var filteredApps: {
-                var q = searchQuery.trim().toLowerCase()
-                var apps = DesktopEntries.applications.values
-
-                if (q === "")
-                    return apps
-
-                return apps.filter(function(app) {
-                    if (app.name.toLowerCase().indexOf(q) !== -1)
-                        return true
-
-                    if (app.genericName &&
-                        app.genericName.toLowerCase().indexOf(q) !== -1)
-                        return true
-
-                    if (app.keywords) {
-                        for (var i = 0; i < app.keywords.length; i++) {
-                            if (app.keywords[i].toLowerCase().indexOf(q) !== -1)
-                                return true
-                        }
-                    }
-
-                    return false
-                }).sort(function(a, b) {
-                    return a.name.localeCompare(b.name)
-                })
-            }
+            // apps + calculator / timer / url / windows / power / web (see LauncherSearch.qml)
+            property var results: LauncherSearch.build(searchQuery)
 
             function navigate(delta) {
-                if (filteredApps.length === 0)
+                if (results.length === 0)
                     return
 
                 var oldIndex = selectedIndex
 
                 selectedIndex =
-                    (selectedIndex + delta + filteredApps.length)
-                    % filteredApps.length
+                    (selectedIndex + delta + results.length)
+                    % results.length
 
                 var oldPage = Math.floor(oldIndex / launcherList.pageSize)
                 var newPage = Math.floor(selectedIndex / launcherList.pageSize)
@@ -748,6 +723,7 @@ PanelWindow {
                     launcherSearch.text = ""
                     searchQuery = ""
                     selectedIndex = 0
+                    LauncherSearch.refresh()
 
                     forceActiveFocus()
 
@@ -832,10 +808,8 @@ PanelWindow {
                             event.accepted = true
                         } else if (event.key === Qt.Key_Return ||
                                    event.key === Qt.Key_Enter) {
-                            if (launcherView.filteredApps.length > 0) {
-                                var app = launcherView.filteredApps[launcherView.selectedIndex]
-                                app.execute()
-                                AppLauncherState.recordLaunch(app.id)
+                            if (launcherView.results.length > 0) {
+                                launcherView.results[launcherView.selectedIndex].run()
                                 AppLauncherState.hide()
                             }
                             event.accepted = true
@@ -862,7 +836,7 @@ PanelWindow {
                 spacing: 12
                 clip: true
 
-                model: launcherView.filteredApps
+                model: launcherView.results
 
                 property int pageSize: 6
                 property real itemWidth: (width - (5 * spacing)) / 6
@@ -902,15 +876,30 @@ PanelWindow {
 
                     Column {
                         anchors.centerIn: parent
-                        spacing: 8
+                        spacing: 6
 
-                        Image {
+                        Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: 42
                             height: 42
-                            source: modelData.icon !== "" ? "image://icon/" + modelData.icon : ""
-                            smooth: true
-                            mipmap: true
+
+                            Image {
+                                id: cardIcon
+                                anchors.fill: parent
+                                source: modelData.icon !== "" ? "image://icon/" + modelData.icon : ""
+                                smooth: true
+                                mipmap: true
+                                visible: modelData.icon !== "" && status === Image.Ready
+                            }
+
+                            // calculator / timer / web / window ... results (and icons that fail to load)
+                            Text {
+                                anchors.centerIn: parent
+                                visible: !cardIcon.visible
+                                text: modelData.glyph !== "" ? modelData.glyph : "󰣇"
+                                color: Colors.colBrightBlue
+                                font { family: "JetBrainsMono Nerd Font"; pixelSize: 30 }
+                            }
                         }
 
                         Text {
@@ -920,15 +909,26 @@ PanelWindow {
                             color: Colors.fg
                             horizontalAlignment: Text.AlignHCenter
                             elide: Text.ElideRight
-                            font { pixelSize: 12; weight: Font.Medium }
+                            font { pixelSize: modelData.kind === "calc" ? 15 : 12; weight: modelData.kind === "calc" ? Font.DemiBold : Font.Medium }
+                        }
+
+                        Text {
+                            width: 110
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: text !== ""
+                            text: modelData.sub
+                            color: Colors.fg
+                            opacity: 0.5
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight
+                            font.pixelSize: 9
                         }
                     }
 
                     MouseArea {
                         anchors.fill: parent
                         onClicked: {
-                            modelData.execute()
-                            AppLauncherState.recordLaunch(modelData.id)
+                            modelData.run()
                             AppLauncherState.hide()
                         }
                     }
