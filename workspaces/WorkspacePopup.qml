@@ -53,7 +53,7 @@ Item {
 
                 // little pip if the workspace is asking for attention
                 Rectangle {
-                    visible: chip.modelData.urgent && !chip.current
+                    visible: WorkspaceState.alerted(chip.modelData) && !chip.current
                     anchors { right: parent.right; top: parent.top; rightMargin: 2; topMargin: 2 }
                     width: 8
                     height: 8

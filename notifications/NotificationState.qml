@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
 import QtQuick
+import "../workspaces"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  NotificationState — the notch's notification daemon (replaces swaync).
@@ -79,6 +80,7 @@ Singleton {
             historyModel.remove(historyModel.count - 1)
         root.unread++
         root.save()
+        root.noteWorkspace(n.appName, n.desktopEntry)   // red dot on the workspace it came from
 
         var critical = n.urgency === NotificationUrgency.Critical
         if (root.dnd && !critical) return
@@ -207,6 +209,32 @@ Singleton {
         }
     }
 
+    // ── which workspace did it come from? (drives the red workspace dots) ─────
+    property var markQueue: []
+
+    function noteWorkspace(app, entry) {
+        root.markQueue = root.markQueue.concat([{ app: app || "", entry: entry || "" }])
+        if (!markProcess.running) markProcess.running = true
+    }
+
+    Process {
+        id: markProcess
+        command: ["hyprctl", "clients", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var job = root.markQueue[0]
+                root.markQueue = root.markQueue.slice(1)
+                try {
+                    if (job) {
+                        var win = root.bestWindow(JSON.parse(text), root.keysFor(job.app, job.entry))
+                        if (win) WorkspaceState.markAlert(win.workspace.id)
+                    }
+                } catch (e) {}
+            }
+        }
+        onExited: if (root.markQueue.length > 0) markProcess.running = true
+    }
+
     function invokeAction(action) {
         action.invoke()
         closeBanner(true)
@@ -251,6 +279,7 @@ Singleton {
     }
 
     function clearHistory() {
+        WorkspaceState.clearAlerts()
         historyModel.clear()
         root.unread = 0
         root.save()

@@ -25,7 +25,30 @@ Singleton {
     readonly property int focusedId: Hyprland.focusedWorkspace ? Hyprland.focusedWorkspace.id : 1
     property string layout: "dwindle"          // layout of the focused workspace
     property bool popup: false                 // show the switch popup
-    property bool ready: false                 // ignore the very first values at startup
+    property bool ready: false
+
+    // workspaces holding a window that sent a notification you haven't looked at yet.
+    // One flag per workspace (not a count) - the dots just turn red.
+    property var alerts: ({})
+
+    function markAlert(id) {
+        if (id <= 0 || id === root.focusedId || root.alerts[id]) return
+        var a = Object.assign({}, root.alerts)
+        a[id] = true
+        root.alerts = a
+    }
+
+    function clearAlert(id) {
+        if (!root.alerts[id]) return
+        var a = Object.assign({}, root.alerts)
+        delete a[id]
+        root.alerts = a
+    }
+
+    function clearAlerts() { root.alerts = ({}) }
+
+    // red if a notification is waiting there, or Hyprland itself says a window wants attention
+    function alerted(ws) { return !!root.alerts[ws.id] || ws.urgent }                 // ignore the very first values at startup
 
     readonly property string layoutLabel: layout === "scrolling" ? "Scrolling" : (layout === "master" ? "Master" : "Tiled")
 
@@ -39,6 +62,7 @@ Singleton {
     }
 
     onFocusedIdChanged: {
+        root.clearAlert(root.focusedId)         // you're looking at it now
         if (root.ready) root.show()
         layoutProcess.running = true
     }
