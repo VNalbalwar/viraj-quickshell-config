@@ -142,6 +142,7 @@ Item {
                     text: row.d.app + (row.d.subtitle !== "" && row.d.kind === "mpris" ? "  ·  " + row.d.subtitle : "")
                         + (row.d.kind === "mpris" && !row.d.playing ? "  ·  paused" : "")
                         + (row.d.muted ? "  ·  muted" : "")
+                        + (row.d.browser && row.d.playing ? "  ·  all tabs share this one" : "")
                     color: Colors.fg
                     opacity: 0.55
                     elide: Text.ElideRight

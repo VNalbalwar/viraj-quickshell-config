@@ -36,7 +36,7 @@ Singleton {
     }
 
     readonly property var emptyRow: ({ key: "", kind: "", player: null, app: "", title: "", subtitle: "", art: "",
-                                       playing: false, muted: false, streamIndex: -1 })
+                                       playing: false, muted: false, streamIndex: -1, browser: false })
     function rowFor(key) {
         for (var i = 0; i < rows.length; i++)
             if (rows[i].key === key) return rows[i]
@@ -85,7 +85,10 @@ Singleton {
             out.push({
                 key: "m" + i, kind: "mpris", player: p, app: p.identity,
                 title: p.trackTitle || "Unknown title", subtitle: p.trackArtist || "",
-                art: p.trackArtUrl || "", playing: p.isPlaying, muted: muted, streamIndex: streamIndex
+                art: p.trackArtUrl || "", playing: p.isPlaying, muted: muted, streamIndex: streamIndex,
+                // Chromium browsers mix ALL tabs into one audio stream and report one media session,
+                // so nothing outside the browser can tell the tabs apart
+                browser: /chrom|brave|edge|opera|vivaldi/i.test((p.identity || "") + " " + (p.desktopEntry || ""))
             })
         }
 

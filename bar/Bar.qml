@@ -1046,17 +1046,17 @@ PanelWindow {
                             Image {
                                 id: cardIcon
                                 anchors.fill: parent
-                                source: modelData.icon !== "" ? "image://icon/" + modelData.icon : ""
+                                source: modelData.iconSource || ""
                                 smooth: true
                                 mipmap: true
-                                visible: modelData.icon !== "" && status === Image.Ready
+                                visible: (modelData.iconSource || "") !== "" && status === Image.Ready
                             }
 
                             // calculator / timer / web / window ... results (and icons that fail to load)
                             Text {
                                 anchors.centerIn: parent
                                 visible: !cardIcon.visible
-                                text: modelData.glyph !== "" ? modelData.glyph : "󰣇"
+                                text: modelData.glyph !== "" ? modelData.glyph : "󰣆"
                                 color: Colors.colBrightBlue
                                 font { family: "JetBrainsMono Nerd Font"; pixelSize: 30 }
                             }

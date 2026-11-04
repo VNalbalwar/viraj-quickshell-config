@@ -6,6 +6,7 @@ import QtQuick
 import "../activity"
 import "../control_center"
 import "../notifications"
+import "../theme"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  LauncherSearch — turns what you type in the notch launcher into result cards.
@@ -149,7 +150,7 @@ Singleton {
             return root.matches(w.title, q) || root.matches(w.class, q)
         }).slice(0, 6)
         out = out.concat(wins.map(function(w) {
-            return { kind: "window", name: w.title, sub: "Window · " + w.class + " · workspace " + w.workspace.id, icon: root.iconFor(w.class), glyph: "󰣇",
+            return { kind: "window", name: w.title, sub: "Window · " + w.class + " · workspace " + w.workspace.id, icon: root.iconFor(w.class), iconSource: Icons.source([w.class, w.class.toLowerCase(), w.initialClass]), glyph: "󰣆",
                 run: function() {
                     Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.focus({ window = 'address:" + w.address + "' })"])
                 } }
@@ -185,7 +186,7 @@ Singleton {
     }
 
     function appResult(app) {
-        return { kind: "app", name: app.name, sub: "", icon: app.icon, glyph: "",
+        return { kind: "app", name: app.name, sub: "", icon: app.icon, iconSource: Icons.forApp(app), glyph: "",
             run: function() {
                 app.execute()
                 AppLauncherState.recordLaunch(app.id)

@@ -28,13 +28,8 @@ Item {
     opacity: (n !== null && active) ? 1 : 0
     Behavior on opacity { NumberAnimation { duration: 180 } }
 
-    function iconSource(notification) {
-        if (!notification) return ""
-        if (notification.image && notification.image !== "") return notification.image
-        var icon = notification.appIcon
-        if (!icon || icon === "") return ""
-        return icon.indexOf("/") === 0 ? "file://" + icon : "image://icon/" + icon
-    }
+    // a verified icon source, or "" (-> the bell glyph) - never somebody else's fallback logo
+    function iconSource(notification) { return Icons.forNotification(notification) }
 
     HoverHandler {
         onHoveredChanged: NotificationState.hovering = hovered
