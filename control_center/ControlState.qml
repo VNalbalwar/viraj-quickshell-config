@@ -109,6 +109,8 @@ Singleton {
         profileReadProcess.running = true
         platformProfileProcess.running = true
         profileHelperProcess.running = true
+        senseHelperProcess.running = true
+        OsdState.updateFanMode()
     }
 
     // ── sliders (written throttled so dragging stays smooth) ─────────────────
@@ -232,6 +234,33 @@ Singleton {
             profileReadProcess.running = true
             platformProfileProcess.running = true
             if (code !== 0) root.notify("Power profile", "Couldn't switch to " + next)
+        })
+    }
+
+    // Fan: same whitelisted-helper pattern. Values are the ones OsdState already
+    // labels (0,0 = firmware auto).
+    readonly property var fanCycle: [
+        { label: "Auto",        value: "0,0" },
+        { label: "Quiet",       value: "30,30" },
+        { label: "Balanced",    value: "50,50" },
+        { label: "Performance", value: "70,70" },
+        { label: "Turbo",       value: "100,100" }
+    ]
+    readonly property string senseHelperPath: "/usr/local/bin/predator-sense"
+    property bool senseHelper: false
+
+    function cycleFan() {
+        if (!root.senseHelper) {
+            root.notify("Fan mode", "Run extras/predator/install.sh once to enable fan control")
+            return
+        }
+        var idx = -1
+        for (var i = 0; i < root.fanCycle.length; i++)
+            if (root.fanCycle[i].label === OsdState.fanMode) idx = i
+        var next = root.fanCycle[(idx + 1) % root.fanCycle.length]
+        runAction(["pkexec", root.senseHelperPath, "fan", next.value], function(code) {
+            OsdState.updateFanMode()
+            if (code !== 0) root.notify("Fan mode", "Couldn't switch to " + next.label)
         })
     }
 
@@ -467,6 +496,12 @@ Singleton {
         id: profileHelperProcess
         command: ["test", "-x", root.profileHelperPath]
         onExited: function(code) { root.profileHelper = (code === 0) }
+    }
+
+    Process {
+        id: senseHelperProcess
+        command: ["test", "-x", root.senseHelperPath]
+        onExited: function(code) { root.senseHelper = (code === 0) }
     }
 
     // keep values live while the panel is open (but never fight a slider drag)
