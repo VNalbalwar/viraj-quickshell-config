@@ -598,7 +598,7 @@ PanelWindow {
                     radius: parent.radius
                     Image {
                         anchors.fill: parent
-                        source: mediaPlayer && mediaPlayer.trackArtUrl ? mediaPlayer.trackArtUrl : ""
+                        source: shownPlayer && shownPlayer.trackArtUrl ? shownPlayer.trackArtUrl : ""
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         cache: true
@@ -608,7 +608,7 @@ PanelWindow {
 
                 Text {
                     anchors.centerIn: parent
-                    visible: !mediaPlayer || !mediaPlayer.trackArtUrl
+                    visible: !shownPlayer || !shownPlayer.trackArtUrl
                     text: !mediaPlayer || mediaIsSpotify ? "󰓇" : "󰎆"
                     color: !mediaPlayer || mediaIsSpotify ? "#1ED760" : Colors.colBlue
                     opacity: 1.0
