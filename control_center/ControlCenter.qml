@@ -157,7 +157,7 @@ Item {
     }
 
     readonly property var pageItems: ({
-        wifi: wifiPage, bluetooth: bluetoothPage, audio: audioPage, clipboard: clipboardPage, keys: keysPage, notifications: notificationsPage, hotspot: hotspotPage
+        wifi: wifiPage, bluetooth: bluetoothPage, audio: audioPage, clipboard: clipboardPage, keys: keysPage, notifications: notificationsPage, hotspot: hotspotPage, keyboard: keyboardPage
     })
 
     Keys.onPressed: function(event) {
@@ -216,7 +216,7 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", audio: "Sound", clipboard: "Clipboard", keys: "Keybinds", notifications: "Notifications", hotspot: "Hotspot" })[cc.page] || ""
+                text: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", audio: "Sound", clipboard: "Clipboard", keys: "Keybinds", notifications: "Notifications", hotspot: "Hotspot", keyboard: "Keyboard" })[cc.page] || ""
                 color: Colors.fg
                 font { pixelSize: 16; weight: Font.DemiBold }
             }
@@ -229,6 +229,11 @@ Item {
             opacity: cc.onMain ? 1 : 0
             visible: opacity > 0.01
             Behavior on opacity { NumberAnimation { duration: 200 } }
+
+            RoundButton {
+                icon: "󰏘"
+                onClicked: ControlState.openPage("keyboard")
+            }
 
             RoundButton {
                 icon: "󰌌"
@@ -344,4 +349,5 @@ Item {
     KeysPage { id: keysPage }
     NotificationsPage { id: notificationsPage }
     HotspotPage { id: hotspotPage }
+    KeyboardPage { id: keyboardPage }
 }
