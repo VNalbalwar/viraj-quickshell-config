@@ -223,21 +223,32 @@ PanelWindow {
         bottomRightRadius: panelMode ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
     }
 
-    // Any MPRIS player (Spotify, browsers, mpv, VLC...). A player picked by
-    // tapping the label wins; otherwise the one that is playing, then one with
-    // a track loaded, then the first.
-    property var selectedPlayer: null
+    // Any MPRIS player (Spotify, every browser tab with media, mpv, VLC...).
+    //   - the notch FOLLOWS whichever player started playing most recently
+    //   - you can pick one yourself (pager dots, scroll wheel, label); that holds
+    //     until another player starts playing
+    //   - otherwise: any playing one, then one with a track loaded, then the first
+    property var selectedPlayer: null     // picked by the user
+    property var lastActivePlayer: null   // most recent player that started playing
+    property var hoverPlayer: null        // previewed while hovering a pager dot
 
     readonly property var mediaPlayer: {
         var players = Mpris.players.values
         if (selectedPlayer && players.indexOf(selectedPlayer) !== -1)
             return selectedPlayer
+        if (lastActivePlayer && players.indexOf(lastActivePlayer) !== -1 && lastActivePlayer.isPlaying)
+            return lastActivePlayer
         for (var i = 0; i < players.length; i++)
             if (players[i].isPlaying) return players[i]
         for (var j = 0; j < players.length; j++)
             if (players[j].trackTitle) return players[j]
         return players.length > 0 ? players[0] : null
     }
+
+    // what the song info shows: the previewed player while hovering a dot, else the active one
+    readonly property var shownPlayer: hoverPlayer !== null && Mpris.players.values.indexOf(hoverPlayer) !== -1 ? hoverPlayer : mediaPlayer
+    readonly property int playerCount: Mpris.players.values.length
+    readonly property int playerIndex: Mpris.players.values.indexOf(mediaPlayer)
 
     readonly property bool mediaIsSpotify: mediaPlayer !== null
         && (mediaPlayer.desktopEntry === "spotify" || mediaPlayer.identity.toLowerCase().indexOf("spotify") !== -1)
@@ -249,11 +260,14 @@ PanelWindow {
         : mediaPlaying ? "media" : ""
     readonly property int activityWidth: activityKind === "media" ? 290 : 310
 
-    function nextPlayer() {
+    function stepPlayer(delta) {
         var players = Mpris.players.values
         if (players.length < 2) return
-        selectedPlayer = players[(players.indexOf(mediaPlayer) + 1) % players.length]
+        var i = players.indexOf(mediaPlayer)
+        selectedPlayer = players[((i < 0 ? 0 : i) + delta + players.length) % players.length]
     }
+
+    function nextPlayer() { stepPlayer(1) }
 
     readonly property bool hasMedia: mediaPlayer !== null
     readonly property bool mediaPlaying: hasMedia && mediaPlayer.isPlaying
@@ -541,6 +555,36 @@ PanelWindow {
 
             Behavior on opacity { NumberAnimation { duration: 220 } }
 
+            // auto-follow: whichever player starts playing becomes the active one
+            Repeater {
+                model: Mpris.players
+
+                delegate: Item {
+                    required property var modelData
+
+                    // a browser tab registers its player when its video starts, i.e. it
+                    // shows up already playing - that counts as "just started" too
+                    Component.onCompleted: if (modelData.isPlaying) lastActivePlayer = modelData
+
+                    Connections {
+                        target: modelData
+                        function onIsPlayingChanged() {
+                            if (modelData.isPlaying) {
+                                lastActivePlayer = modelData
+                                selectedPlayer = null
+                            }
+                        }
+                    }
+                }
+            }
+
+            // scroll over the panel to flip through players (doesn't swallow clicks)
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                onWheel: function(wheel) { stepPlayer(wheel.angleDelta.y > 0 ? -1 : 1) }
+            }
+
             Rectangle {
                 id: artworkContainer
                 width: 100
@@ -575,20 +619,53 @@ PanelWindow {
                 }
             }
 
+            // pager: one dot per player (playing ones tinted) - click to pick, hover to preview
+            Row {
+                anchors { horizontalCenter: artworkContainer.horizontalCenter; top: artworkContainer.bottom; topMargin: 9 }
+                spacing: 5
+                visible: playerCount > 1
+
+                Repeater {
+                    model: Mpris.players
+
+                    delegate: Rectangle {
+                        required property var modelData
+                        readonly property bool current: modelData === mediaPlayer
+
+                        width: current ? 16 : 7
+                        height: 7
+                        radius: 3.5
+                        color: current ? Colors.fg
+                            : (modelData.isPlaying ? Colors.alpha(Colors.colBrightBlue, 0.85) : Colors.alpha(Colors.colFg, 0.3))
+                        Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutBack; easing.overshoot: 1.6 } }
+                        Behavior on color { ColorAnimation { duration: 160 } }
+
+                        MouseArea {
+                            anchors { fill: parent; margins: -4 }
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: hoverPlayer = modelData
+                            onExited: if (hoverPlayer === modelData) hoverPlayer = null
+                            onClicked: selectedPlayer = modelData
+                        }
+                    }
+                }
+            }
+
             Column {
                 id: songInfo
                 anchors { left: artworkContainer.right; leftMargin: 16; top: artworkContainer.top; right: calendar.left; rightMargin: 16 }
                 spacing: 3
                 Text {
                     width: parent.width
-                    text: mediaPlayer ? (mediaPlayer.trackTitle || "Unknown Title") : "Nothing !"
+                    text: shownPlayer ? (shownPlayer.trackTitle || "Unknown Title") : "Nothing !"
                     color: Colors.fg
                     elide: Text.ElideRight
                     font { pixelSize: 17; weight: Font.DemiBold }
                 }
                 Text {
                     width: parent.width
-                    text: mediaPlayer ? (mediaPlayer.trackArtist || "Unknown Artist") : "Play something"
+                    text: shownPlayer ? (shownPlayer.trackArtist || "Unknown Artist") : "Play something"
                     color: Colors.grey2
                     elide: Text.ElideRight
                     font { pixelSize: 13 }
@@ -680,7 +757,7 @@ PanelWindow {
             Text {
                 id: playerLabel
                 anchors { right: parent.right; bottom: parent.bottom; rightMargin: 17; bottomMargin: 10 }
-                text: mediaPlayer ? mediaPlayer.identity + (Mpris.players.values.length > 1 ? "  ›" : "") : ""
+                text: mediaPlayer ? mediaPlayer.identity + (playerCount > 1 ? "  ·  " + (playerIndex + 1) + "/" + playerCount + "  ›" : "") : ""
                 color: Colors.grey2
                 opacity: labelHover.hovered ? 0.9 : 0.45
                 font { pixelSize: 9 }
