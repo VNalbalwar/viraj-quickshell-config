@@ -11,6 +11,7 @@ import "../theme"
 import "../lockscreen"
 import "../control_center"
 import "../notifications"
+import "../activity"
 
 PanelWindow {
     property var screen
@@ -238,6 +239,13 @@ PanelWindow {
     readonly property bool mediaIsSpotify: mediaPlayer !== null
         && (mediaPlayer.desktopEntry === "spotify" || mediaPlayer.identity.toLowerCase().indexOf("spotify") !== -1)
 
+    // what the idle notch is "doing": recording > timer > media
+    readonly property string activityKind:
+        ActivityState.recording ? "recording"
+        : (ActivityState.timerActive || ActivityState.timerFinished) ? "timer"
+        : mediaPlaying ? "media" : ""
+    readonly property int activityWidth: activityKind === "media" ? 290 : 310
+
     function nextPlayer() {
         var players = Mpris.players.values
         if (players.length < 2) return
@@ -292,7 +300,7 @@ PanelWindow {
             wallpaperMode ? 1080 :
             launcherMode ? 1000 :
             osdMode ? 500 :
-            (expanded ? 680 : 200)
+            (expanded ? 680 : (activityKind !== "" ? activityWidth : 200))
 
         implicitHeight:
             powerMode ? 124 :
@@ -341,7 +349,7 @@ PanelWindow {
 
         Text {
             anchors.centerIn: parent
-            opacity: island.expanded ? 0 : 1
+            opacity: (island.expanded || activityKind === "timer" || activityKind === "recording") ? 0 : 1
             text: Qt.formatDateTime(clock.date, "hh:mm")
             color: Colors.fg
             font { pixelSize: 16; weight: 600 }
@@ -350,6 +358,14 @@ PanelWindow {
 
         // The OSD only owns the notch when no other panel is open; otherwise it
         // used to draw its icons right on top of the control center / menus.
+        LiveActivity {
+            anchors.fill: parent
+            kind: activityKind
+            shown: !island.expanded
+            player: mediaPlayer
+            playing: mediaPlaying
+        }
+
         Osd {
             anchors.fill: parent
             allowed: !panelMode
