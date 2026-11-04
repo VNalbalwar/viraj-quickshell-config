@@ -1,0 +1,58 @@
+#!/bin/sh
+# predator-sense <command> <value>
+# Root helper for the linuwu_sense sysfs knobs the notch control center drives.
+# Every value is strictly validated, so the polkit rule that lets the desktop
+# user run this can't be abused to write anything else.
+#
+#   fan       <cpu>,<gpu>                      0-100 each (0,0 = auto)
+#   kb-zones  RRGGBB,RRGGBB,RRGGBB,RRGGBB,<brightness 0-100>
+#   kb-mode   <mode 0-7>,<speed 0-9>,<brightness 0-100>,<dir 1-2>,<r>,<g>,<b>
+set -eu
+
+B=/sys/module/linuwu_sense/drivers/platform:acer-wmi/acer-wmi
+cmd="${1:-}"
+val="${2:-}"
+target=""
+
+num_ok() { # num_ok <value> <max>
+    case "$1" in ''|*[!0-9]*) return 1 ;; esac
+    [ "${#1}" -le 3 ] && [ "$1" -le "$2" ]
+}
+
+hex_ok() {
+    case "$1" in
+        [0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+IFS=,
+case "$cmd" in
+    fan)
+        set -- $val
+        if [ $# -eq 2 ] && num_ok "$1" 100 && num_ok "$2" 100; then
+            target="$B/predator_sense/fan_speed"
+        fi
+        ;;
+    kb-zones)
+        set -- $val
+        if [ $# -eq 5 ] && hex_ok "$1" && hex_ok "$2" && hex_ok "$3" && hex_ok "$4" && num_ok "$5" 100; then
+            target="$B/four_zoned_kb/per_zone_mode"
+        fi
+        ;;
+    kb-mode)
+        set -- $val
+        if [ $# -eq 7 ] && num_ok "$1" 7 && num_ok "$2" 9 && num_ok "$3" 100 && num_ok "$4" 2 \
+            && num_ok "$5" 255 && num_ok "$6" 255 && num_ok "$7" 255; then
+            target="$B/four_zoned_kb/four_zone_mode"
+        fi
+        ;;
+esac
+
+if [ -z "$target" ] || [ ! -w "$target" ]; then
+    echo "usage: predator-sense fan <cpu>,<gpu> | kb-zones <RRGGBB x4>,<bright> | kb-mode <m,s,b,d,r,g,b>" >&2
+    echo "(or the driver doesn't expose that knob on this machine)" >&2
+    exit 2
+fi
+
+printf '%s\n' "$val" > "$target"

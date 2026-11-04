@@ -1,0 +1,13 @@
+// Let viraj's active local session run the two Predator helpers via pkexec
+// without a password prompt (quickshell notch control center: Power, Fan,
+// Keyboard RGB). Only these exact programs, only this user, only a local
+// active session.
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.policykit.exec" &&
+        (action.lookup("program") == "/usr/local/bin/predator-profile" ||
+         action.lookup("program") == "/usr/local/bin/predator-sense") &&
+        subject.user == "viraj" &&
+        subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});
