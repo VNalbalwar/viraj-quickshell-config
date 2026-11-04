@@ -42,7 +42,7 @@ PanelWindow {
     }
 
     focusable: true
-    WlrLayershell.keyboardFocus: panelMode && !wsMode      // the workspace popup is only a notice: never take the keyboard
+    WlrLayershell.keyboardFocus: panelMode && !wsMode && !notifMode   // popups and banners are only notices: never take the keyboard
         ? WlrKeyboardFocus.Exclusive
         : WlrKeyboardFocus.None
 
