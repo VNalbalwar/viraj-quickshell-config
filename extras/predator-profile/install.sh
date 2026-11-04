@@ -10,7 +10,8 @@ D="$(cd "$(dirname "$0")" && pwd)"
 sudo install -m 755 -o root -g root "$D/predator-profile" /usr/local/bin/predator-profile
 sudo install -m 644 -o root -g root "$D/50-predator-profile.rules" /etc/polkit-1/rules.d/50-predator-profile.rules
 echo "installed:"
-ls -l /usr/local/bin/predator-profile /etc/polkit-1/rules.d/50-predator-profile.rules
+ls -l /usr/local/bin/predator-profile
+sudo ls -l /etc/polkit-1/rules.d/50-predator-profile.rules
 
 echo
 echo "test (no password should be asked):"
