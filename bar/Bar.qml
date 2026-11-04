@@ -42,7 +42,7 @@ PanelWindow {
     }
 
     focusable: true
-    WlrLayershell.keyboardFocus: panelMode
+    WlrLayershell.keyboardFocus: panelMode && !wsMode      // the workspace popup is only a notice: never take the keyboard
         ? WlrKeyboardFocus.Exclusive
         : WlrKeyboardFocus.None
 
@@ -219,8 +219,10 @@ PanelWindow {
         }
     }
 
+    // The workspace popup is just a notice, so while it is the only thing showing the whole window lets
+    // clicks and typing through to the windows underneath instead of making you wait for it to go.
     mask: Region {
-        item: island
+        item: wsMode ? null : island
         topLeftRadius: 0
         topRightRadius: 0
         bottomLeftRadius: panelMode ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
