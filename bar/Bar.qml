@@ -13,6 +13,7 @@ import "../control_center"
 import "../notifications"
 import "../activity"
 import "../workspaces"
+import "../media"
 
 PanelWindow {
     property var screen
@@ -21,9 +22,12 @@ PanelWindow {
     property bool launcherMode: AppLauncherState.launcherVisible
     property bool powerMode: PowerState.visible
     property bool controlMode: ControlState.visible
+    // the "Now playing" list (opened from the N-playing button); closes when you leave the notch
+    property bool mediaListOpen: false
+    property bool mediaListMode: mediaListOpen && !powerMode && !wallpaperMode && !launcherMode && !controlMode && !notifMode
     property bool notifMode: NotificationState.banner !== null && !powerMode && !wallpaperMode && !launcherMode && !controlMode
     property bool wallpaperClosing: false
-    readonly property bool panelMode: powerMode || wallpaperMode || launcherMode || controlMode || notifMode || wsMode
+    readonly property bool panelMode: powerMode || wallpaperMode || launcherMode || controlMode || notifMode || wsMode || mediaListMode
     // brief popup when you switch workspace / layout; yields to notifications, OSD and panels
     property bool wsMode: WorkspaceState.popup && !powerMode && !wallpaperMode && !launcherMode && !controlMode && !notifMode && !osdMode
     property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode && !powerMode && !controlMode && !notifMode
@@ -45,7 +49,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
-    implicitHeight: controlMode ? Ui.height : (notifMode ? Math.max(160, notifView.wantedHeight) : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160))))
+    implicitHeight: controlMode ? Ui.height : (notifMode ? Math.max(160, notifView.wantedHeight) : (mediaListMode ? Math.max(160, mediaList.wantedHeight + 6) : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160)))))
 
     onControlModeChanged: {
         if (controlMode) {
@@ -230,7 +234,6 @@ PanelWindow {
     //   - otherwise: any playing one, then one with a track loaded, then the first
     property var selectedPlayer: null     // picked by the user
     property var lastActivePlayer: null   // most recent player that started playing
-    property var hoverPlayer: null        // previewed while hovering a pager dot
 
     readonly property var mediaPlayer: {
         var players = Mpris.players.values
@@ -246,7 +249,7 @@ PanelWindow {
     }
 
     // what the song info shows: the previewed player while hovering a dot, else the active one
-    readonly property var shownPlayer: hoverPlayer !== null && Mpris.players.values.indexOf(hoverPlayer) !== -1 ? hoverPlayer : mediaPlayer
+    readonly property var shownPlayer: mediaPlayer
     readonly property int playerCount: Mpris.players.values.length
     readonly property int playerIndex: Mpris.players.values.indexOf(mediaPlayer)
 
@@ -259,6 +262,8 @@ PanelWindow {
         : (ActivityState.timerActive || ActivityState.timerFinished) ? "timer"
         : mediaPlaying ? "media" : ""
     readonly property int activityWidth: activityKind === "media" ? 290 : 310
+
+    onMediaListModeChanged: if (!mediaListMode && MediaState.count < 2) mediaListOpen = false
 
     function stepPlayer(delta) {
         var players = Mpris.players.values
@@ -302,6 +307,7 @@ PanelWindow {
             || controlMode
             || notifMode
             || wsMode
+            || mediaListMode
             || wallpaperMode
             || launcherMode
             || osdMode
@@ -316,6 +322,7 @@ PanelWindow {
             controlMode ? Ui.width :
             notifMode ? notifView.wantedWidth :
             wsMode ? wsView.wantedWidth :
+            mediaListMode ? mediaList.wantedWidth :
             wallpaperMode ? 1080 :
             launcherMode ? 1000 :
             osdMode ? 500 :
@@ -326,6 +333,7 @@ PanelWindow {
             controlMode ? Ui.height :
             notifMode ? notifView.wantedHeight :
             wsMode ? wsView.wantedHeight :
+            mediaListMode ? mediaList.wantedHeight :
             wallpaperMode ? 180 :
             launcherMode ? 240 :
             osdMode ? 44 :
@@ -389,6 +397,21 @@ PanelWindow {
         Osd {
             anchors.fill: parent
             allowed: !panelMode
+        }
+
+        MediaList {
+            id: mediaList
+            anchors.fill: parent
+            active: mediaListMode
+            onCloseRequested: mediaListOpen = false
+            onPick: function(player) { selectedPlayer = player }
+        }
+
+        // close the list shortly after the pointer leaves the notch, or when only one source is left
+        Timer {
+            interval: 1300
+            running: mediaListOpen && !hover.hovered
+            onTriggered: mediaListOpen = false
         }
 
         WorkspacePopup {
@@ -549,6 +572,7 @@ PanelWindow {
                 && !controlMode
                 && !notifMode
                 && !wsMode
+                && !mediaListMode
                 && !wallpaperMode
                 && !launcherMode
                 && !osdMode ? 1 : 0
@@ -644,36 +668,51 @@ PanelWindow {
                 }
             }
 
-            // pager: one dot per player (playing ones tinted) - click to pick, hover to preview
-            Row {
-                anchors { horizontalCenter: artworkContainer.horizontalCenter; top: artworkContainer.bottom; topMargin: 9 }
-                spacing: 5
-                visible: playerCount > 1
+            // "N playing" button: opens the full list of everything that's making sound.
+            // (replaces the tiny pager dots - this is big enough to hit quickly)
+            Rectangle {
+                id: nowPlayingChip
+                anchors { left: artworkContainer.left; top: artworkContainer.bottom; topMargin: 5 }
+                width: 100
+                height: 24
+                radius: 12
+                visible: MediaState.count > 1
+                color: chipMouse.containsMouse ? Colors.alpha(Colors.colBlue, 0.5) : Colors.alpha(Colors.colBlue, 0.3)
+                scale: chipMouse.pressed ? 0.94 : 1.0
+                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2 } }
 
-                Repeater {
-                    model: Mpris.players
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 5
 
-                    delegate: Rectangle {
-                        required property var modelData
-                        readonly property bool current: modelData === mediaPlayer
-
-                        width: current ? 16 : 7
-                        height: 7
-                        radius: 3.5
-                        color: current ? Colors.fg
-                            : (modelData.isPlaying ? Colors.alpha(Colors.colBrightBlue, 0.85) : Colors.alpha(Colors.colFg, 0.3))
-                        Behavior on width { NumberAnimation { duration: 260; easing.type: Easing.OutBack; easing.overshoot: 1.6 } }
-                        Behavior on color { ColorAnimation { duration: 160 } }
-
-                        MouseArea {
-                            anchors { fill: parent; margins: -4 }
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onEntered: hoverPlayer = modelData
-                            onExited: if (hoverPlayer === modelData) hoverPlayer = null
-                            onClicked: selectedPlayer = modelData
-                        }
+                    Text {
+                        text: "󰲮"
+                        color: Colors.fg
+                        anchors.verticalCenter: parent.verticalCenter
+                        font { family: "JetBrainsMono Nerd Font"; pixelSize: 13 }
                     }
+                    Text {
+                        text: (MediaState.playingCount > 0 ? MediaState.playingCount + " playing" : MediaState.count + " players")
+                        color: Colors.fg
+                        anchors.verticalCenter: parent.verticalCenter
+                        font { pixelSize: 11; weight: Font.DemiBold }
+                    }
+                    Text {
+                        text: "󰅀"
+                        color: Colors.fg
+                        opacity: 0.7
+                        anchors.verticalCenter: parent.verticalCenter
+                        font { family: "JetBrainsMono Nerd Font"; pixelSize: 12 }
+                    }
+                }
+
+                MouseArea {
+                    id: chipMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: mediaListOpen = true
                 }
             }
 
