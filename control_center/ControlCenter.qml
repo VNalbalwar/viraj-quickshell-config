@@ -65,6 +65,16 @@ Item {
             trigger: function() { ControlState.toggleBluetooth() }
         },
         {
+            icon: "󰀃",
+            label: "Hotspot",
+            sub: HotspotState.busy ? "Working..." : (HotspotState.active
+                ? HotspotState.ssid + (HotspotState.clients > 0 ? " · " + HotspotState.clients : "")
+                : (HotspotState.helper ? "Off" : "Needs setup")),
+            on: HotspotState.active,
+            detail: "hotspot",
+            trigger: function() { HotspotState.toggle() }
+        },
+        {
             icon: "󰀝",
             label: "Airplane",
             sub: ControlState.airplane ? "On" : "Off",
@@ -147,7 +157,7 @@ Item {
     }
 
     readonly property var pageItems: ({
-        wifi: wifiPage, bluetooth: bluetoothPage, audio: audioPage, clipboard: clipboardPage, keys: keysPage, notifications: notificationsPage
+        wifi: wifiPage, bluetooth: bluetoothPage, audio: audioPage, clipboard: clipboardPage, keys: keysPage, notifications: notificationsPage, hotspot: hotspotPage
     })
 
     Keys.onPressed: function(event) {
@@ -206,7 +216,7 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", audio: "Sound", clipboard: "Clipboard", keys: "Keybinds", notifications: "Notifications" })[cc.page] || ""
+                text: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", audio: "Sound", clipboard: "Clipboard", keys: "Keybinds", notifications: "Notifications", hotspot: "Hotspot" })[cc.page] || ""
                 color: Colors.fg
                 font { pixelSize: 16; weight: Font.DemiBold }
             }
@@ -254,11 +264,12 @@ Item {
         Row {
             anchors { right: parent.right; verticalCenter: parent.verticalCenter }
             spacing: 12
-            opacity: (cc.page === "wifi" || cc.page === "bluetooth") ? 1 : 0
+            opacity: (cc.page === "wifi" || cc.page === "bluetooth" || cc.page === "hotspot") ? 1 : 0
             visible: opacity > 0.01
             Behavior on opacity { NumberAnimation { duration: 200 } }
 
             RoundButton {
+                visible: cc.page !== "hotspot"
                 icon: "󰑐"
                 spinOnClick: true
                 onClicked: cc.page === "wifi" ? ControlState.rescanWifi() : ControlState.setBluetoothScan(true)
@@ -266,8 +277,8 @@ Item {
 
             Pill {
                 anchors.verticalCenter: parent.verticalCenter
-                on: cc.page === "wifi" ? OsdState.wifiEnabled : ControlState.bluetoothEnabled
-                onToggled: cc.page === "wifi" ? ControlState.toggleWifi() : ControlState.toggleBluetooth()
+                on: cc.page === "wifi" ? OsdState.wifiEnabled : (cc.page === "hotspot" ? HotspotState.active : ControlState.bluetoothEnabled)
+                onToggled: cc.page === "wifi" ? ControlState.toggleWifi() : (cc.page === "hotspot" ? HotspotState.toggle() : ControlState.toggleBluetooth())
             }
         }
     }
@@ -332,4 +343,5 @@ Item {
     ClipboardPage { id: clipboardPage }
     KeysPage { id: keysPage }
     NotificationsPage { id: notificationsPage }
+    HotspotPage { id: hotspotPage }
 }
