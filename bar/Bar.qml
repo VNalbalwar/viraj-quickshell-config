@@ -577,6 +577,10 @@ PanelWindow {
                 && !launcherMode
                 && !osdMode ? 1 : 0
 
+            // Hidden by opacity only, this panel's buttons (prev / play / next, the player label...)
+            // stayed clickable underneath whatever panel was open and swallowed clicks meant for it.
+            enabled: opacity > 0.5
+
             Behavior on opacity { NumberAnimation { duration: 220 } }
 
             // auto-follow: whichever player starts playing becomes the active one
