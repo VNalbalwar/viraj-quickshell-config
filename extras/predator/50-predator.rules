@@ -6,7 +6,7 @@ polkit.addRule(function(action, subject) {
     if (action.id == "org.freedesktop.policykit.exec" &&
         (action.lookup("program") == "/usr/local/bin/predator-profile" ||
          action.lookup("program") == "/usr/local/bin/predator-sense" ||
-         action.lookup("program") == "/usr/local/bin/qs-hotspot-iface") &&
+         action.lookup("program") == "/usr/local/bin/qs-hotspot") &&
         subject.user == "viraj" &&
         subject.local && subject.active) {
         return polkit.Result.YES;

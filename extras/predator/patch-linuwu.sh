@@ -55,7 +55,9 @@ EOF
 grep -nE 'linux/string.h|PH16-71|four_zone_kb = 1' "$SRC" | head
 
 echo "[2/4] dkms install for $KVER"
-sudo dkms install linuwu-sense/1.0.0 -k "$KVER" --force
+# drop the cached build first, otherwise DKMS happily reinstalls the OLD binary
+sudo dkms remove linuwu-sense/1.0.0 -k "$KVER" 2>/dev/null || true
+sudo dkms install linuwu-sense/1.0.0 -k "$KVER"
 
 echo "[3/4] reloading module"
 sudo rmmod linuwu_sense 2>/dev/null || true

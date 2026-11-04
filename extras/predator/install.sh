@@ -10,11 +10,12 @@ D="$(cd "$(dirname "$0")" && pwd)"
 
 sudo install -m 755 -o root -g root "$D/predator-profile" /usr/local/bin/predator-profile
 sudo install -m 755 -o root -g root "$D/predator-sense" /usr/local/bin/predator-sense
-sudo install -m 755 -o root -g root "$D/qs-hotspot-iface" /usr/local/bin/qs-hotspot-iface
+sudo install -m 755 -o root -g root "$D/qs-hotspot" /usr/local/bin/qs-hotspot
+sudo rm -f /usr/local/bin/qs-hotspot-iface   # replaced by qs-hotspot
 sudo install -m 644 -o root -g root "$D/50-predator.rules" /etc/polkit-1/rules.d/50-predator.rules
 sudo rm -f /etc/polkit-1/rules.d/50-predator-profile.rules   # superseded by 50-predator.rules
 echo "installed:"
-ls -l /usr/local/bin/predator-profile /usr/local/bin/predator-sense /usr/local/bin/qs-hotspot-iface
+ls -l /usr/local/bin/predator-profile /usr/local/bin/predator-sense /usr/local/bin/qs-hotspot
 sudo ls -l /etc/polkit-1/rules.d/50-predator.rules
 
 if [ "${1:-}" != "--no-driver" ]; then

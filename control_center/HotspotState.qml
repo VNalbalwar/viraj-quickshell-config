@@ -9,12 +9,11 @@ import "../osd"
 //  HotspotState — share your Wi-Fi without leaving it.
 //
 //  NetworkManager normally puts a hotspot on wlan0 itself, which drops your own
-//  Wi-Fi connection. Intel radios can run one station + one AP at once, as long
-//  as both use the SAME channel. So we:
-//    1. add a second virtual interface (qsap0) next to wlan0   (root helper)
-//    2. let NetworkManager run an access point on it, on wlan0's current channel,
-//       with ipv4.method=shared (DHCP + NAT for the devices that join)
-//  wlan0 is never touched. Needs: extras/predator/install.sh (the helper).
+//  Wi-Fi connection (and can't drive a second interface on this radio). Intel
+//  radios can run one station + one AP at once, as long as both use the SAME
+//  channel. So the root helper (qs-hotspot) adds a virtual AP interface (qsap0)
+//  and runs hostapd + dnsmasq + NAT on wlan0's current channel; wlan0 is never
+//  touched. Needs: extras/predator/install.sh.
 // ─────────────────────────────────────────────────────────────────────────────
 Singleton {
     id: root
@@ -28,9 +27,8 @@ Singleton {
     property string password: ""
     property int channel: 0
 
-    readonly property string helperPath: "/usr/local/bin/qs-hotspot-iface"
+    readonly property string helperPath: "/usr/local/bin/qs-hotspot"
     readonly property string configFile: "/home/viraj/.config/qs-hotspot.json"
-    readonly property string connection: "qs-hotspot"
 
     function notify(body) {
         Quickshell.execDetached(["notify-send", "-a", "Hotspot", "Hotspot", body])
@@ -60,14 +58,14 @@ Singleton {
             return
         }
         root.busy = true
-        startProcess.command = ["sh", "-c", startScript, "sh", root.ssid, root.password, root.helperPath, root.connection]
+        startProcess.command = ["sh", "-c", startScript, "sh", root.ssid, root.password, root.helperPath]
         startProcess.running = false
         startProcess.running = true
     }
 
     function stop() {
         root.busy = true
-        stopProcess.command = ["sh", "-c", stopScript, "sh", root.helperPath, root.connection]
+        stopProcess.command = ["sh", "-c", stopScript, "sh", root.helperPath]
         stopProcess.running = false
         stopProcess.running = true
     }
@@ -79,24 +77,14 @@ Singleton {
 
     // Same channel/band as the current Wi-Fi link; the AP rides next to it on qsap0.
     readonly property string startScript:
-        "set -e\n" +
-        "ssid=\"$1\"; pass=\"$2\"; helper=\"$3\"; con=\"$4\"\n" +
+        "ssid=\"$1\"; pass=\"$2\"; helper=\"$3\"\n" +
         "freq=$(iw dev wlan0 link | awk '/freq:/ {print int($2)}')\n" +
         "[ -n \"$freq\" ] || { echo 'not connected' >&2; exit 3; }\n" +
-        "if [ \"$freq\" -ge 5000 ]; then band=a; ch=$(( (freq - 5000) / 5 )); else band=bg; ch=$(( (freq - 2407) / 5 )); fi\n" +
-        "pkexec \"$helper\" add\n" +
-        "nmcli connection delete \"$con\" >/dev/null 2>&1 || true\n" +
-        "nmcli connection add type wifi ifname qsap0 con-name \"$con\" autoconnect no ssid \"$ssid\" mode ap " +
-            "802-11-wireless.band \"$band\" 802-11-wireless.channel \"$ch\" " +
-            "wifi-sec.key-mgmt wpa-psk wifi-sec.psk \"$pass\" ipv4.method shared ipv6.method ignore >/dev/null\n" +
-        "nmcli connection up \"$con\" ifname qsap0 >/dev/null\n" +
+        "if [ \"$freq\" -ge 5000 ]; then band=a; ch=$(( (freq - 5000) / 5 )); else band=g; ch=$(( (freq - 2407) / 5 )); fi\n" +
+        "pkexec \"$helper\" start \"$ssid\" \"$pass\" \"$ch\" \"$band\" || exit 1\n" +
         "echo \"$ch\"\n"
 
-    readonly property string stopScript:
-        "helper=\"$1\"; con=\"$2\"\n" +
-        "nmcli connection down \"$con\" >/dev/null 2>&1 || true\n" +
-        "nmcli connection delete \"$con\" >/dev/null 2>&1 || true\n" +
-        "pkexec \"$helper\" del || true\n"
+    readonly property string stopScript: "pkexec \"$1\" stop || true\n"
 
     Process {
         id: startProcess
@@ -129,7 +117,7 @@ Singleton {
     Process {
         id: statusProcess
         command: ["sh", "-c",
-            "a=$(nmcli -t -f NAME connection show --active | grep -c '^" + root.connection + "$'); " +
+            "if iw dev qsap0 info 2>/dev/null | grep -q 'type AP'; then a=1; else a=0; fi; " +
             "c=$(iw dev qsap0 station dump 2>/dev/null | grep -c '^Station'); echo \"$a $c\""]
         stdout: SplitParser {
             onRead: data => {

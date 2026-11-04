@@ -52,8 +52,8 @@ Page {
                     height: 54
                     radius: 16
                     color: zone < 0 ? Colors.alpha(Colors.colFg, 0.07) : "#" + KeyboardState.zones[zone]
-                    border.width: selected ? 3 : 0
-                    border.color: Colors.fg
+                    border.width: selected ? 3 : 1
+                    border.color: selected ? Colors.fg : Colors.alpha(Colors.colFg, 0.18)
                     scale: zoneMouse.pressed ? 0.94 : 1.0
                     Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutBack; easing.overshoot: 2 } }
                     Behavior on color { ColorAnimation { duration: 160 } }
