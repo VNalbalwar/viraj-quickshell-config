@@ -764,7 +764,10 @@ PanelWindow {
                     }
 
                     Keys.onPressed: function(event) {
-                        if (event.key === Qt.Key_Left ||
+                        if (event.key === Qt.Key_Escape) {
+                            AppLauncherState.hide()
+                            event.accepted = true
+                        } else if (event.key === Qt.Key_Left ||
                             event.key === Qt.Key_Up) {
                             launcherView.navigate(-1)
                             event.accepted = true
@@ -896,6 +899,12 @@ PanelWindow {
             }
 
             Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Escape) {
+                    WallpaperState.hide()
+                    event.accepted = true
+                    return
+                }
+
                 if (!wallpaperMode || wallpaperList.count === 0)
                     return
 
