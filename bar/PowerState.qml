@@ -12,7 +12,7 @@ import "../lockscreen"
 //                close, handled by logind + a before-sleep hook OUTSIDE this
 //                shell (the hook runs `qs ipc call lock lock`, so a lid-close
 //                resumes straight into this same lock).
-//    Log Out   → hyprctl dispatch exit   (real logout to the display manager)
+//    Log Out   → uwsm stop   (ends the uwsm session → back to the GDM greeter)
 //    Reboot    → systemctl reboot
 //    Power Off → systemctl poweroff
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,8 +48,12 @@ Singleton {
         LockState.lock()
     }
 
+    // Hyprland runs under uwsm (launched via GDM → uwsm), so the clean logout
+    // is `uwsm stop`: it tears the whole user session down and returns you to
+    // the GDM login screen. `hyprctl dispatch exit` only kills the compositor
+    // and under uwsm doesn't end the session — that's why logout did nothing.
     function logout() {
-        runCommand("hyprctl dispatch exit")
+        runCommand("uwsm stop")
     }
 
     function reboot() {
