@@ -35,7 +35,7 @@ Singleton {
     readonly property int maxHistory: 100
     readonly property string stateFile: "/home/viraj/.cache/quickshell/notifications.json"
 
-    ListModel { id: historyModel }       // nid, app, summary, body, icon, time, urgency
+    ListModel { id: historyModel }       // nid, app, summary, body, icon, entry, time, urgency
 
     // ── server ───────────────────────────────────────────────────────────────
     NotificationServer {
@@ -71,6 +71,7 @@ Singleton {
             summary: n.summary,
             body: n.body,
             icon: n.appIcon,
+            entry: n.desktopEntry || "",
             time: Date.now(),
             urgency: n.urgency
         })
@@ -124,6 +125,86 @@ Singleton {
         if (userDismissed) n.dismiss()
         else n.expire()
         nextTimer.restart()      // short gap so the island can collapse/re-open between banners
+    }
+
+    // Click on the banner: run the app's own default action (if it has one) and take
+    // you to the window the notification came from - even on another workspace.
+    function activate() {
+        var n = root.banner
+        if (n === null) return
+        var app = n.appName, entry = n.desktopEntry
+        for (var i = 0; i < n.actions.length; i++)
+            if (n.actions[i].identifier === "default") n.actions[i].invoke()
+        closeBanner(true)
+        root.focusSource(app, entry)
+    }
+
+    // ── jump to the window a notification came from ──────────────────────────
+    property string pendingApp: ""
+    property string pendingEntry: ""
+
+    function focusSource(app, entry) {
+        root.pendingApp = app || ""
+        root.pendingEntry = entry || ""
+        clientsProcess.running = false
+        clientsProcess.running = true
+    }
+
+    // all the ways an app might name itself: desktop entry, app name, "google-chrome" for "Google Chrome"...
+    function keysFor(app, entry) {
+        var keys = []
+        function add(s) {
+            s = (s || "").toLowerCase().replace(/\.desktop$/, "").trim()
+            if (s.length < 2) return
+            [s, s.replace(/\s+/g, "-"), s.split(/[\s.]/)[0]].forEach(function(k) {
+                if (k.length >= 2 && keys.indexOf(k) === -1) keys.push(k)
+            })
+        }
+        add(entry)
+        add(app)
+        return keys
+    }
+
+    function bestWindow(clients, keys) {
+        var best = null, bestScore = 0
+        for (var i = 0; i < clients.length; i++) {
+            var c = clients[i]
+            if (!c.mapped) continue
+            var cls = (c["class"] || "").toLowerCase()
+            var icls = (c.initialClass || "").toLowerCase()
+            var title = (c.title || "").toLowerCase()
+            var score = 0
+            for (var j = 0; j < keys.length; j++) {
+                var k = keys[j]
+                if (cls === k || icls === k) score = Math.max(score, 100)
+                else if (cls.length && (cls.endsWith("." + k) || cls.indexOf(k) !== -1)) score = Math.max(score, 60)
+                else if (icls.indexOf(k) !== -1) score = Math.max(score, 55)
+                else if (k.length >= 3 && title.indexOf(k) !== -1) score = Math.max(score, 30)
+            }
+            if (score === 0) continue
+            // prefer the window you used most recently
+            score += 10 - Math.min(10, c.focusHistoryID >= 0 ? c.focusHistoryID : 10)
+            if (score > bestScore) { bestScore = score; best = c }
+        }
+        return best
+    }
+
+    Process {
+        id: clientsProcess
+        command: ["hyprctl", "clients", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var win = root.bestWindow(JSON.parse(text), root.keysFor(root.pendingApp, root.pendingEntry))
+                    if (win) {
+                        // hl.dsp.focus switches to the window's workspace (with the workspace animation)
+                        Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.focus({ window = 'address:" + win.address + "' })"])
+                    }
+                } catch (e) {
+                    console.log("focusSource failed:", e)
+                }
+            }
+        }
     }
 
     function invokeAction(action) {
@@ -195,7 +276,7 @@ Singleton {
             var items = []
             for (var i = 0; i < historyModel.count; i++) {
                 var e = historyModel.get(i)
-                items.push({ nid: e.nid, app: e.app, summary: e.summary, body: e.body, icon: e.icon, time: e.time, urgency: e.urgency })
+                items.push({ nid: e.nid, app: e.app, summary: e.summary, body: e.body, icon: e.icon, entry: e.entry, time: e.time, urgency: e.urgency })
             }
             saveProcess.command = ["sh", "-c", "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\"",
                 "sh", root.stateFile, JSON.stringify({ dnd: root.dnd, history: items })]
@@ -216,7 +297,10 @@ Singleton {
                 var data = JSON.parse(text())
                 root.dnd = !!data.dnd
                 var items = data.history || []
-                for (var i = 0; i < items.length; i++) historyModel.append(items[i])
+                for (var i = 0; i < items.length; i++) {
+                    items[i].entry = items[i].entry || ""      // history saved before `entry` existed
+                    historyModel.append(items[i])
+                }
             } catch (e) {
                 // first run / empty file
             }
@@ -233,6 +317,9 @@ Singleton {
         }
 
         function dismiss(): void { root.closeBanner(true) }
+
+        // same as clicking the banner (handy for testing / binds)
+        function open(): void { root.activate() }
 
         function clear(): void { root.clearHistory() }
     }

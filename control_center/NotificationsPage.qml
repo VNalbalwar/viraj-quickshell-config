@@ -11,7 +11,13 @@ Page {
     onShownChanged: if (shown) NotificationState.markRead()
 
     onDeleteRequested: NotificationState.removeFromHistory(listIndex)
-    onActivateRequested: NotificationState.removeFromHistory(listIndex)
+    onActivateRequested: {
+        if (listIndex >= count) return
+        var e = NotificationState.history.get(listIndex)
+        NotificationState.focusSource(e.app, e.entry)
+        NotificationState.removeFromHistory(listIndex)
+        ControlState.hide()
+    }
 
     RoundButton {
         anchors { right: parent.right; rightMargin: Ui.sideMargin; top: parent.top; topMargin: 16 }
@@ -30,6 +36,7 @@ Page {
             required property string app
             required property string summary
             required property string body
+            required property string entry
             required property real time
             required property int urgency
             required property int index
@@ -43,7 +50,11 @@ Page {
             picked: index === page.listIndex
 
             onEntered: page.listIndex = index
-            onClicked: NotificationState.removeFromHistory(index)
+            onClicked: {
+                NotificationState.focusSource(app, entry)
+                NotificationState.removeFromHistory(index)
+                ControlState.hide()
+            }
             onRightClicked: NotificationState.removeFromHistory(index)
         }
 

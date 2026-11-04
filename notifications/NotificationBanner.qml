@@ -40,21 +40,15 @@ Item {
         onHoveredChanged: NotificationState.hovering = hovered
     }
 
-    // card background tap: default action if the app provided one, else dismiss
+    // card background tap: run the default action and jump to the source window
+    scale: bannerMouse.pressed ? 0.975 : 1.0
+    Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+
     MouseArea {
+        id: bannerMouse
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            var n = banner.n
-            if (!n) return
-            for (var i = 0; i < n.actions.length; i++) {
-                if (n.actions[i].identifier === "default") {
-                    NotificationState.invokeAction(n.actions[i])
-                    return
-                }
-            }
-            NotificationState.closeBanner(true)
-        }
+        onClicked: NotificationState.activate()
     }
 
     // app icon / image
