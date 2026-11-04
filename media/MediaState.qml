@@ -23,6 +23,25 @@ Singleton {
     property string streamsKey: ""
 
     readonly property var rows: root.buildRows(Mpris.players.values, root.streams)
+
+    // The list's model is just the ORDERED KEYS, which only change when a source appears or goes
+    // away. Rows read their live data through rowFor(). Result: muting / pausing / retitling a row
+    // doesn't rebuild the list, so it doesn't jump back to the top under your pointer.
+    property var keys: []
+    property string keysKey: ""
+    onRowsChanged: {
+        var k = rows.map(function(r) { return r.key })
+        var s = JSON.stringify(k)
+        if (s !== root.keysKey) { root.keysKey = s; root.keys = k }
+    }
+
+    readonly property var emptyRow: ({ key: "", kind: "", player: null, app: "", title: "", subtitle: "", art: "",
+                                       playing: false, muted: false, streamIndex: -1 })
+    function rowFor(key) {
+        for (var i = 0; i < rows.length; i++)
+            if (rows[i].key === key) return rows[i]
+        return emptyRow
+    }
     readonly property int count: rows.length
     readonly property int playingCount: rows.filter(function(r) { return r.playing }).length
 
@@ -52,11 +71,13 @@ Singleton {
         for (var i = 0; i < players.length; i++) {
             var p = players[i]
             var streamIndex = -1
+            var muted = false
             if (p.isPlaying) {                       // a playing player accounts for ONE of its app's streams
                 for (var k = 0; k < live.length; k++) {
                     if (!used[live[k].index] && root.sameApp(p, live[k])) {
                         used[live[k].index] = true
                         streamIndex = live[k].index
+                        muted = live[k].mute
                         break
                     }
                 }
@@ -64,7 +85,7 @@ Singleton {
             out.push({
                 key: "m" + i, kind: "mpris", player: p, app: p.identity,
                 title: p.trackTitle || "Unknown title", subtitle: p.trackArtist || "",
-                art: p.trackArtUrl || "", playing: p.isPlaying, muted: false, streamIndex: streamIndex
+                art: p.trackArtUrl || "", playing: p.isPlaying, muted: muted, streamIndex: streamIndex
             })
         }
 
@@ -85,15 +106,19 @@ Singleton {
         return out
     }
 
-    // play/pause a player, or mute/unmute a stream that has no player
-    function toggle(row) {
-        if (row.kind === "mpris") {
-            if (row.player && row.player.canTogglePlaying) row.player.togglePlaying()
-        } else {
-            muteProcess.command = ["pactl", "set-sink-input-mute", String(row.streamIndex), "toggle"]
-            muteProcess.running = false
-            muteProcess.running = true
-        }
+    // play / pause a player (rows that have one)
+    function togglePlay(row) {
+        if (row.kind === "mpris" && row.player && row.player.canTogglePlaying) row.player.togglePlaying()
+    }
+
+    // mute / unmute that one source (its audio stream), whether or not it has a player.
+    // NOTE: WirePlumber remembers volume/mute PER APP NAME, so a muted Chrome tab makes the next
+    // Chrome tab start muted too - the row says "muted" and its button un-mutes it.
+    function toggleMute(row) {
+        if (row.streamIndex < 0) return
+        muteProcess.command = ["pactl", "set-sink-input-mute", String(row.streamIndex), "toggle"]
+        muteProcess.running = false
+        muteProcess.running = true
     }
 
     Process { id: muteProcess; onExited: root.refresh() }

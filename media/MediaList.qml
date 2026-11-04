@@ -72,17 +72,20 @@ Item {
         spacing: 6
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        model: MediaState.rows
+        model: MediaState.keys
 
         delegate: ClippingRectangle {
             id: row
-            required property var modelData
+            required property string modelData      // the row's key
             required property int index
+
+            // live data for this row (re-read whenever it changes, without rebuilding the list)
+            readonly property var d: MediaState.rowFor(modelData)
 
             width: rows.width
             height: list.rowH
             radius: 18
-            color: modelData.playing
+            color: row.d.playing
                 ? Colors.alpha(Colors.colBlue, rowHover.hovered ? 0.30 : 0.22)
                 : Colors.alpha(Colors.colFg, rowHover.hovered ? 0.10 : 0.055)
             scale: rowMouse.pressed ? 0.985 : 1.0
@@ -95,8 +98,8 @@ Item {
             MouseArea {
                 id: rowMouse
                 anchors.fill: parent
-                cursorShape: row.modelData.kind === "mpris" ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: if (row.modelData.kind === "mpris") list.pick(row.modelData.player)
+                cursorShape: row.d.kind === "mpris" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: if (row.d.kind === "mpris") list.pick(row.d.player)
             }
 
             ClippingRectangle {
@@ -109,35 +112,36 @@ Item {
 
                 Image {
                     anchors.fill: parent
-                    source: row.modelData.art
+                    source: row.d.art
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     visible: status === Image.Ready
                 }
                 Text {
                     anchors.centerIn: parent
-                    visible: row.modelData.art === ""
-                    text: row.modelData.kind === "stream" ? "󰕾" : "󰎆"
+                    visible: row.d.art === ""
+                    text: row.d.kind === "stream" ? "󰕾" : "󰎆"
                     color: Colors.colBrightBlue
                     font { family: list.iconFont; pixelSize: 20 }
                 }
             }
 
             Column {
-                anchors { left: art.right; leftMargin: 12; right: actionButton.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
+                anchors { left: art.right; leftMargin: 12; right: buttons.left; rightMargin: 12; verticalCenter: parent.verticalCenter }
                 spacing: 1
 
                 Text {
                     width: parent.width
-                    text: row.modelData.title
+                    text: row.d.title
                     color: Colors.fg
                     elide: Text.ElideRight
                     font { pixelSize: 13; weight: Font.DemiBold }
                 }
                 Text {
                     width: parent.width
-                    text: row.modelData.app + (row.modelData.subtitle !== "" && row.modelData.kind === "mpris" ? "  ·  " + row.modelData.subtitle : "")
-                        + (row.modelData.kind === "mpris" ? (row.modelData.playing ? "" : "  ·  paused") : "  ·  " + (row.modelData.muted ? "muted" : "playing"))
+                    text: row.d.app + (row.d.subtitle !== "" && row.d.kind === "mpris" ? "  ·  " + row.d.subtitle : "")
+                        + (row.d.kind === "mpris" && !row.d.playing ? "  ·  paused" : "")
+                        + (row.d.muted ? "  ·  muted" : "")
                     color: Colors.fg
                     opacity: 0.55
                     elide: Text.ElideRight
@@ -145,33 +149,67 @@ Item {
                 }
             }
 
-            // the big button: play/pause for players, mute/unmute for streams
-            Rectangle {
-                id: actionButton
+            // every row: its OWN mute button, plus play/pause when it has a player
+            Row {
+                id: buttons
                 anchors { right: parent.right; rightMargin: 7; verticalCenter: parent.verticalCenter }
-                width: 40
-                height: 40
-                radius: 20
-                color: actionMouse.containsMouse ? Colors.alpha(Colors.colBlue, 0.55) : Colors.alpha(Colors.colBlue, 0.34)
-                scale: actionMouse.pressed ? 0.86 : (actionMouse.containsMouse ? 1.06 : 1.0)
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+                spacing: 8
 
-                Text {
-                    anchors.centerIn: parent
-                    text: row.modelData.kind === "mpris"
-                        ? (row.modelData.playing ? "󰏤" : "󰐊")
-                        : (row.modelData.muted ? "󰖁" : "󰕾")
-                    color: Colors.fg
-                    font { family: list.iconFont; pixelSize: 20 }
+                Rectangle {
+                    id: muteButton
+                    readonly property bool usable: row.d.streamIndex >= 0
+                    width: 40
+                    height: 40
+                    radius: 20
+                    opacity: usable ? 1 : 0.3
+                    color: row.d.muted
+                        ? Colors.alpha("#ff6b6b", muteMouse.containsMouse ? 0.45 : 0.30)
+                        : (muteMouse.containsMouse && usable ? Colors.alpha(Colors.colFg, 0.20) : Colors.alpha(Colors.colFg, 0.10))
+                    scale: muteMouse.pressed && usable ? 0.86 : 1.0
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: row.d.muted ? "󰖁" : "󰕾"
+                        color: row.d.muted ? "#ff8a8a" : Colors.fg
+                        font { family: list.iconFont; pixelSize: 19 }
+                    }
+
+                    MouseArea {
+                        id: muteMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: muteButton.usable ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: if (muteButton.usable) MediaState.toggleMute(row.d)
+                    }
                 }
 
-                MouseArea {
-                    id: actionMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: MediaState.toggle(row.modelData)
+                Rectangle {
+                    id: actionButton
+                    visible: row.d.kind === "mpris"
+                    width: 40
+                    height: 40
+                    radius: 20
+                    color: actionMouse.containsMouse ? Colors.alpha(Colors.colBlue, 0.55) : Colors.alpha(Colors.colBlue, 0.34)
+                    scale: actionMouse.pressed ? 0.86 : (actionMouse.containsMouse ? 1.06 : 1.0)
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: row.d.playing ? "󰏤" : "󰐊"
+                        color: Colors.fg
+                        font { family: list.iconFont; pixelSize: 20 }
+                    }
+
+                    MouseArea {
+                        id: actionMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: MediaState.togglePlay(row.d)
+                    }
                 }
             }
         }
