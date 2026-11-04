@@ -60,8 +60,15 @@ ClippingRectangle {
         onPositionChanged: function(mouse) { if (pressed) pick(mouse.y) }
         onReleased: ControlState.adjusting = false
         onCanceled: ControlState.adjusting = false
+        // proportional: a mouse notch (120) = 5%, a trackpad's tiny deltas add up smoothly
+        // (the fractional remainder is kept so slow scrolling still moves the slider)
+        property real wheelRemainder: 0
         onWheel: function(wheel) {
-            slider.moved(Math.max(0, Math.min(100, slider.value + (wheel.angleDelta.y > 0 ? 5 : -5))))
+            wheelRemainder += wheel.angleDelta.y / 24
+            var whole = wheelRemainder > 0 ? Math.floor(wheelRemainder) : Math.ceil(wheelRemainder)
+            if (whole === 0) return
+            wheelRemainder -= whole
+            slider.moved(Math.max(0, Math.min(100, slider.value + whole)))
         }
     }
 

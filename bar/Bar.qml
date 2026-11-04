@@ -580,9 +580,34 @@ PanelWindow {
 
             // scroll over the panel to flip through players (doesn't swallow clicks)
             MouseArea {
+                id: playerWheel
                 anchors.fill: parent
                 acceptedButtons: Qt.NoButton
-                onWheel: function(wheel) { stepPlayer(wheel.angleDelta.y > 0 ? -1 : 1) }
+                // only while the media panel is actually showing - this item spans the whole island
+                // and sits above the control center / launcher, so otherwise it eats THEIR scrolling
+                enabled: parent.opacity > 0.5
+
+                // A mouse notch is one 120-unit event; a trackpad swipe is dozens of tiny ones plus
+                // an inertia tail. So: collect scroll until it adds up to a notch, take ONE step, then
+                // ignore the tail for a moment. Leftovers are forgotten after a pause.
+                property real acc: 0
+                property bool cooling: false
+
+                Timer { id: wheelCooldown; interval: 380; onTriggered: playerWheel.cooling = false }
+                Timer { id: wheelIdle; interval: 250; onTriggered: playerWheel.acc = 0 }
+
+                onWheel: function(wheel) {
+                    wheel.accepted = true
+                    if (cooling) return
+                    acc += wheel.angleDelta.y
+                    wheelIdle.restart()
+                    if (Math.abs(acc) >= 120) {
+                        stepPlayer(acc > 0 ? -1 : 1)
+                        acc = 0
+                        cooling = true
+                        wheelCooldown.restart()
+                    }
+                }
             }
 
             Rectangle {
