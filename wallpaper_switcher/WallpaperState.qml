@@ -60,7 +60,6 @@ awww img "${path}" \\
     --transition-fps 60 \\
     --transition-bezier 0.65,0.05,0.36,1
 wallust run "${path}"
-pkill swaync
 echo "${path}" > ~/.cache/current_wallpaper
 echo "image" > ~/.cache/current_wallpaper_type
 cp "${path}" ~/.cache/wallpaper_frame.png

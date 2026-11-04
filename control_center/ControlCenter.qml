@@ -3,6 +3,7 @@ import Quickshell.Bluetooth
 import QtQuick
 import "../theme"
 import "../osd"
+import "../notifications"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ControlCenter — lives INSIDE the notch (Bar.qml hosts it, like the power
@@ -146,7 +147,7 @@ Item {
     }
 
     readonly property var pageItems: ({
-        wifi: wifiPage, bluetooth: bluetoothPage, audio: audioPage, clipboard: clipboardPage, keys: keysPage
+        wifi: wifiPage, bluetooth: bluetoothPage, audio: audioPage, clipboard: clipboardPage, keys: keysPage, notifications: notificationsPage
     })
 
     Keys.onPressed: function(event) {
@@ -205,7 +206,7 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", audio: "Sound", clipboard: "Clipboard", keys: "Keybinds" })[cc.page] || ""
+                text: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", audio: "Sound", clipboard: "Clipboard", keys: "Keybinds", notifications: "Notifications" })[cc.page] || ""
                 color: Colors.fg
                 font { pixelSize: 16; weight: Font.DemiBold }
             }
@@ -330,4 +331,5 @@ Item {
     AudioPage { id: audioPage }
     ClipboardPage { id: clipboardPage }
     KeysPage { id: keysPage }
+    NotificationsPage { id: notificationsPage }
 }

@@ -10,6 +10,7 @@ import "../osd"
 import "../theme"
 import "../lockscreen"
 import "../control_center"
+import "../notifications"
 
 PanelWindow {
     property var screen
@@ -18,8 +19,10 @@ PanelWindow {
     property bool launcherMode: AppLauncherState.launcherVisible
     property bool powerMode: PowerState.visible
     property bool controlMode: ControlState.visible
+    property bool notifMode: NotificationState.banner !== null && !powerMode && !wallpaperMode && !launcherMode && !controlMode
     property bool wallpaperClosing: false
-    property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode && !powerMode && !controlMode
+    readonly property bool panelMode: powerMode || wallpaperMode || launcherMode || controlMode || notifMode
+    property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode && !powerMode && !controlMode && !notifMode
 
     // Hide the notch entirely while the lockscreen is up (Stage 1 test overlay).
     visible: !LockState.demoActive
@@ -31,14 +34,14 @@ PanelWindow {
     }
 
     focusable: true
-    WlrLayershell.keyboardFocus: (powerMode || wallpaperMode || launcherMode || controlMode)
+    WlrLayershell.keyboardFocus: panelMode
         ? WlrKeyboardFocus.Exclusive
         : WlrKeyboardFocus.None
 
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
-    implicitHeight: controlMode ? Ui.height : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160)))
+    implicitHeight: controlMode ? Ui.height : (notifMode ? Math.max(160, notifView.wantedHeight) : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160))))
 
     onControlModeChanged: {
         if (controlMode) {
@@ -212,8 +215,8 @@ PanelWindow {
         item: island
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
-        bottomRightRadius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
+        bottomLeftRadius: panelMode ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
+        bottomRightRadius: panelMode ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
     }
 
     // Any MPRIS player (Spotify, browsers, mpv, VLC...). A player picked by
@@ -272,6 +275,7 @@ PanelWindow {
         property bool expanded:
             powerMode
             || controlMode
+            || notifMode
             || wallpaperMode
             || launcherMode
             || osdMode
@@ -284,6 +288,7 @@ PanelWindow {
         implicitWidth:
             powerMode ? 550 :
             controlMode ? Ui.width :
+            notifMode ? notifView.wantedWidth :
             wallpaperMode ? 1080 :
             launcherMode ? 1000 :
             osdMode ? 500 :
@@ -292,16 +297,17 @@ PanelWindow {
         implicitHeight:
             powerMode ? 124 :
             controlMode ? Ui.height :
+            notifMode ? notifView.wantedHeight :
             wallpaperMode ? 180 :
             launcherMode ? 240 :
             osdMode ? 44 :
             (expanded ? 130 : 44)
 
-        radius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        radius: panelMode ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
-        bottomRightRadius: (powerMode || wallpaperMode || launcherMode || controlMode) ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        bottomLeftRadius: panelMode ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
+        bottomRightRadius: panelMode ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
 
         color: "#000000"
 
@@ -346,7 +352,13 @@ PanelWindow {
         // used to draw its icons right on top of the control center / menus.
         Osd {
             anchors.fill: parent
-            allowed: !powerMode && !wallpaperMode && !launcherMode && !controlMode
+            allowed: !panelMode
+        }
+
+        NotificationBanner {
+            id: notifView
+            anchors.fill: parent
+            active: notifMode
         }
 
         ControlCenter {
@@ -487,6 +499,7 @@ PanelWindow {
             opacity: island.expanded
                 && !powerMode
                 && !controlMode
+                && !notifMode
                 && !wallpaperMode
                 && !launcherMode
                 && !osdMode ? 1 : 0

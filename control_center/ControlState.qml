@@ -5,6 +5,7 @@ import Quickshell.Io
 import Quickshell.Bluetooth
 import QtQuick
 import "../osd"
+import "../notifications"
 import "../wallpaper_switcher"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ Singleton {
     property string page: "main"          // main | wifi | bluetooth
     property bool adjusting: false        // a slider is being dragged
 
-    property bool dnd: false
+    readonly property bool dnd: NotificationState.dnd
     property bool airplane: false
     property string powerProfile: "balanced"   // power-profiles-daemon view
     property string platformProfile: ""        // raw ACPI platform_profile ("" = not exposed)
@@ -104,7 +105,6 @@ Singleton {
         OsdState.readMicMute()
         OsdState.updateWifi()
         OsdState.updateBattery()
-        dndReadProcess.running = true
         airplaneReadProcess.running = true
         profileReadProcess.running = true
         platformProfileProcess.running = true
@@ -208,8 +208,7 @@ Singleton {
     }
 
     function toggleDnd() {
-        dndToggleProcess.running = false
-        dndToggleProcess.running = true
+        NotificationState.toggleDnd()
     }
 
     // The Predator mode key cycles these four platform_profile values. Writing
@@ -459,18 +458,6 @@ Singleton {
     }
 
     // ── state readers ────────────────────────────────────────────────────────
-    Process {
-        id: dndReadProcess
-        command: ["swaync-client", "-D"]
-        stdout: SplitParser { onRead: data => root.dnd = data.trim() === "true" }
-    }
-
-    Process {
-        id: dndToggleProcess
-        command: ["swaync-client", "-d", "-sw"]
-        stdout: SplitParser { onRead: data => root.dnd = data.trim() === "true" }
-    }
-
     Process {
         id: airplaneReadProcess
         command: ["sh", "-c", "rfkill list | grep -c 'Soft blocked: yes'"]
