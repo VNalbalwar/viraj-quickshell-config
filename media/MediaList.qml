@@ -94,14 +94,6 @@ Item {
 
             HoverHandler { id: rowHover }
 
-            // tapping the row itself makes that player the main one (streams have nothing to select)
-            MouseArea {
-                id: rowMouse
-                anchors.fill: parent
-                cursorShape: row.d.kind === "mpris" ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: if (row.d.kind === "mpris") list.pick(row.d.player)
-            }
-
             ClippingRectangle {
                 id: art
                 anchors { left: parent.left; leftMargin: 7; verticalCenter: parent.verticalCenter }
@@ -113,7 +105,8 @@ Item {
                 Image {
                     anchors.fill: parent
                     source: row.d.art
-                    fillMode: Image.PreserveAspectCrop
+                    anchors.margins: row.d.kind === "tab" ? 9 : 0
+                    fillMode: row.d.kind === "tab" ? Image.PreserveAspectFit : Image.PreserveAspectCrop
                     asynchronous: true
                     visible: status === Image.Ready
                 }
@@ -139,14 +132,26 @@ Item {
                 }
                 Text {
                     width: parent.width
-                    text: row.d.app + (row.d.subtitle !== "" && row.d.kind === "mpris" ? "  ·  " + row.d.subtitle : "")
-                        + (row.d.kind === "mpris" && !row.d.playing ? "  ·  paused" : "")
+                    text: row.d.app + (row.d.subtitle !== "" && row.d.kind !== "stream" ? "  ·  " + row.d.subtitle : "")
+                        + (row.d.kind !== "stream" && !row.d.playing ? "  ·  paused" : "")
                         + (row.d.muted ? "  ·  muted" : "")
                         + (row.d.browser && row.d.playing ? "  ·  all tabs share this one" : "")
                     color: Colors.fg
                     opacity: 0.55
                     elide: Text.ElideRight
                     font.pixelSize: 11
+                }
+            }
+
+            // tapping the row itself makes that player the main one (streams have nothing to select)
+            MouseArea {
+                id: rowMouse
+                anchors.fill: parent
+                cursorShape: row.d.kind === "stream" ? Qt.ArrowCursor : Qt.PointingHandCursor
+                // a player row becomes the main player; a Chrome tab row takes you to that tab
+                onClicked: {
+                    if (row.d.kind === "mpris") list.pick(row.d.player)
+                    else if (row.d.kind === "tab") ChromeTabs.focusTab(row.d)
                 }
             }
 
@@ -158,7 +163,7 @@ Item {
 
                 Rectangle {
                     id: muteButton
-                    readonly property bool usable: row.d.streamIndex >= 0
+                    readonly property bool usable: row.d.streamIndex >= 0 || row.d.kind === "tab"
                     width: 40
                     height: 40
                     radius: 20
@@ -188,7 +193,7 @@ Item {
 
                 Rectangle {
                     id: actionButton
-                    visible: row.d.kind === "mpris"
+                    visible: row.d.kind === "mpris" || row.d.kind === "tab"
                     width: 40
                     height: 40
                     radius: 20

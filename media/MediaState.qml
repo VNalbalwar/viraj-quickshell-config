@@ -22,7 +22,7 @@ Singleton {
     property var streams: []                 // live pactl sink-inputs (compact), updated only on change
     property string streamsKey: ""
 
-    readonly property var rows: root.buildRows(Mpris.players.values, root.streams)
+    readonly property var rows: root.buildRows(Mpris.players.values, root.streams, ChromeTabs.tabs)
 
     // The list's model is just the ORDERED KEYS, which only change when a source appears or goes
     // away. Rows read their live data through rowFor(). Result: muting / pausing / retitling a row
@@ -36,7 +36,7 @@ Singleton {
     }
 
     readonly property var emptyRow: ({ key: "", kind: "", player: null, app: "", title: "", subtitle: "", art: "",
-                                       playing: false, muted: false, streamIndex: -1, browser: false })
+                                       playing: false, muted: false, streamIndex: -1, browser: false, tabId: -1 })
     function rowFor(key) {
         for (var i = 0; i < rows.length; i++)
             if (rows[i].key === key) return rows[i]
@@ -63,13 +63,25 @@ Singleton {
         return false
     }
 
-    function buildRows(players, streams) {
-        var live = streams.filter(function(s) { return !s.corked })
+    // Chrome itself (not Brave/Edge): its players and its one mixed stream
+    function isChrome(a, b) {
+        var names = [norm(a), norm(b)]
+        for (var i = 0; i < names.length; i++)
+            if (names[i] === "chrome" || names[i].indexOf("googlechrome") !== -1) return true
+        return false
+    }
+
+    function buildRows(players, streams, tabs) {
+        // With the tab bridge connected and tabs reporting sound, every tab is its own row, so
+        // Chrome's single (active-tab-only) player and its one mixed stream would only duplicate them.
+        var haveTabs = tabs.length > 0
+        var live = streams.filter(function(s) { return !s.corked && !(haveTabs && root.isChrome(s.app, s.bin)) })
         var used = {}
         var out = []
 
         for (var i = 0; i < players.length; i++) {
             var p = players[i]
+            if (haveTabs && root.isChrome(p.identity, p.desktopEntry)) continue
             var streamIndex = -1
             var muted = false
             if (p.isPlaying) {                       // a playing player accounts for ONE of its app's streams
@@ -92,6 +104,17 @@ Singleton {
             })
         }
 
+        // one row per Chrome tab that is making sound (or that we paused and can resume)
+        for (var ti = 0; ti < tabs.length; ti++) {
+            var tab = tabs[ti]
+            out.push({
+                key: "t" + tab.id, kind: "tab", player: null, app: ChromeTabs.browser || "Chrome",
+                title: tab.title || "Untitled tab", subtitle: ChromeTabs.hostOf(tab.url),
+                art: tab.favicon || "", playing: !!tab.audible, muted: !!tab.muted,
+                streamIndex: -1, tabId: tab.id, browser: false
+            })
+        }
+
         var extra = 0
         for (var m = 0; m < live.length; m++) {
             if (used[live[m].index]) continue
@@ -100,7 +123,7 @@ Singleton {
                 key: "s" + live[m].index, kind: "stream", player: null, app: live[m].app,
                 title: root.usefulName(live[m].name) || (live[m].app + " · audio " + extra),
                 subtitle: "no player controls · can be muted",
-                art: "", playing: true, muted: live[m].mute, streamIndex: live[m].index
+                art: "", playing: true, muted: live[m].mute, streamIndex: live[m].index, tabId: -1
             })
         }
 
@@ -111,13 +134,15 @@ Singleton {
 
     // play / pause a player (rows that have one)
     function togglePlay(row) {
-        if (row.kind === "mpris" && row.player && row.player.canTogglePlaying) row.player.togglePlaying()
+        if (row.kind === "tab") ChromeTabs.togglePause(row)
+        else if (row.kind === "mpris" && row.player && row.player.canTogglePlaying) row.player.togglePlaying()
     }
 
     // mute / unmute that one source (its audio stream), whether or not it has a player.
     // NOTE: WirePlumber remembers volume/mute PER APP NAME, so a muted Chrome tab makes the next
     // Chrome tab start muted too - the row says "muted" and its button un-mutes it.
     function toggleMute(row) {
+        if (row.kind === "tab") { ChromeTabs.setMuted(row.tabId, !row.muted); return }
         if (row.streamIndex < 0) return
         muteProcess.command = ["pactl", "set-sink-input-mute", String(row.streamIndex), "toggle"]
         muteProcess.running = false

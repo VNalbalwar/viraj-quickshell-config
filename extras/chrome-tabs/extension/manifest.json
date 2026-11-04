@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Notch tab bridge",
+  "version": "1.0.0",
+  "description": "Tells the Quickshell notch which tabs are playing sound and lets it mute, pause or focus them.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtLCIvVgc64wEfRCTJ7DAuYZ9Qp8CIGT3Bm2qgeU+SgVsd0czUr7JEN0bgU49xR6Zdsfiuf0W+IWUzmRkF0h2XjdxiMKC14kei/kq21DMOHwZzDxb7whiFd6JtmDK07/9m3rTrLXUO3v1hBtOSy3YjkHtckpBDdf9eJ2HE6ZlyUMQqOWGgU3sMRiwAErEEdDWF2BdWI+Fq1EZfIJtKE/nqfLPyDWMEK03ogwi1/+L1EHVN33L8dY2449uxWhpERc1n52T+nPXks0FQbT1f46/trN1wF9IbqsITuGlJVx/ltgvwGMEbcMtQQSPk4GMq0Cvn71BG4JSgbggyz29Gt1UYQIDAQAB",
+  "permissions": [
+    "tabs",
+    "scripting",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
