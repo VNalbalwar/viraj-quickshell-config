@@ -12,6 +12,7 @@ import "../lockscreen"
 import "../control_center"
 import "../notifications"
 import "../activity"
+import "../workspaces"
 
 PanelWindow {
     property var screen
@@ -22,7 +23,9 @@ PanelWindow {
     property bool controlMode: ControlState.visible
     property bool notifMode: NotificationState.banner !== null && !powerMode && !wallpaperMode && !launcherMode && !controlMode
     property bool wallpaperClosing: false
-    readonly property bool panelMode: powerMode || wallpaperMode || launcherMode || controlMode || notifMode
+    readonly property bool panelMode: powerMode || wallpaperMode || launcherMode || controlMode || notifMode || wsMode
+    // brief popup when you switch workspace / layout; yields to notifications, OSD and panels
+    property bool wsMode: WorkspaceState.popup && !powerMode && !wallpaperMode && !launcherMode && !controlMode && !notifMode && !osdMode
     property bool osdMode: OsdState.visible && !wallpaperMode && !launcherMode && !powerMode && !controlMode && !notifMode
 
     // Hide the notch entirely while the lockscreen is up (Stage 1 test overlay).
@@ -284,6 +287,7 @@ PanelWindow {
             powerMode
             || controlMode
             || notifMode
+            || wsMode
             || wallpaperMode
             || launcherMode
             || osdMode
@@ -297,6 +301,7 @@ PanelWindow {
             powerMode ? 550 :
             controlMode ? Ui.width :
             notifMode ? notifView.wantedWidth :
+            wsMode ? wsView.wantedWidth :
             wallpaperMode ? 1080 :
             launcherMode ? 1000 :
             osdMode ? 500 :
@@ -306,6 +311,7 @@ PanelWindow {
             powerMode ? 124 :
             controlMode ? Ui.height :
             notifMode ? notifView.wantedHeight :
+            wsMode ? wsView.wantedHeight :
             wallpaperMode ? 180 :
             launcherMode ? 240 :
             osdMode ? 44 :
@@ -369,6 +375,18 @@ PanelWindow {
         Osd {
             anchors.fill: parent
             allowed: !panelMode
+        }
+
+        WorkspacePopup {
+            id: wsView
+            anchors.fill: parent
+            active: wsMode
+        }
+
+        // one dot per workspace in the collapsed notch (the activity pill uses that spot)
+        WorkspaceDots {
+            anchors { left: parent.left; leftMargin: 18; verticalCenter: parent.verticalCenter }
+            shown: !island.expanded && activityKind === ""
         }
 
         NotificationBanner {
@@ -516,6 +534,7 @@ PanelWindow {
                 && !powerMode
                 && !controlMode
                 && !notifMode
+                && !wsMode
                 && !wallpaperMode
                 && !launcherMode
                 && !osdMode ? 1 : 0
