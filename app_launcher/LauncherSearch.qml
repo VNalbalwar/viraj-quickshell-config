@@ -5,6 +5,7 @@ import Quickshell.Io
 import QtQuick
 import "../activity"
 import "../control_center"
+import "../notifications"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  LauncherSearch — turns what you type in the notch launcher into result cards.
@@ -15,7 +16,7 @@ import "../control_center"
 //    clip / cb          open clipboard history
 //    <text>             matching apps, then open windows (Enter focuses),
 //                       then power actions (lock / log out / reboot / power off),
-//                       then "search the web"
+//                       then "search Google"
 //
 //  Every result is { kind, name, sub, icon, glyph, run() }.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,7 +69,25 @@ Singleton {
         return ""
     }
 
-    function open(url) { Quickshell.execDetached(["xdg-open", url]) }
+    // Open an address in the default browser AND go to the browser window. Without the
+    // second part a tab opens in a Chrome that may be sitting on another workspace and it
+    // looks like nothing happened.
+    property string browserEntry: ""
+
+    function open(url) {
+        Quickshell.execDetached(["xdg-open", url])
+        focusFast.restart()      // the tab usually opens within ~0.5s...
+        focusSlow.restart()      // ...a cold-started browser needs longer to create its window
+    }
+
+    Timer { id: focusFast; interval: 450;  onTriggered: NotificationState.focusSource("", root.browserEntry) }
+    Timer { id: focusSlow; interval: 1700; onTriggered: NotificationState.focusSource("", root.browserEntry) }
+
+    Process {
+        command: ["xdg-settings", "get", "default-web-browser"]
+        running: true
+        stdout: SplitParser { onRead: data => root.browserEntry = data.trim().replace(/\.desktop$/, "") }
+    }
 
     function matches(text, q) { return text && text.toLowerCase().indexOf(q) !== -1 }
 
@@ -159,8 +178,8 @@ Singleton {
         }
 
         // 5. always last: search the web
-        out.push({ kind: "web", name: "Search “" + raw + "”", sub: "Web · DuckDuckGo", icon: "", glyph: "󰖟",
-            run: function() { root.open("https://duckduckgo.com/?q=" + encodeURIComponent(raw)) } })
+        out.push({ kind: "web", name: "Google “" + raw + "”", sub: "Search the web", icon: "", glyph: "󰖟",
+            run: function() { root.open("https://www.google.com/search?q=" + encodeURIComponent(raw)) } })
 
         return out
     }
