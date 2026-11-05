@@ -143,7 +143,13 @@ Singleton {
             var sb = b.name.toLowerCase().indexOf(q) === 0 ? 0 : 1
             return sa !== sb ? sa - sb : a.name.localeCompare(b.name)
         })
-        out = out.concat(appHits.map(root.appResult))
+        // Apps that can have many windows (browsers, terminals, file managers): the app card opens a NEW
+        // window, and a second card right after it takes you to the one that is already open.
+        appHits.forEach(function(app) {
+            out.push(root.appResult(app))
+            var open = root.isMultiWindow(app) ? root.openWindowsOf(app) : []
+            if (open.length > 0) out.push(root.goToResult(app, open))
+        })
 
         // 3. open windows
         var wins = root.windows.filter(function(w) {
@@ -185,10 +191,37 @@ Singleton {
         return out
     }
 
+    function isMultiWindow(app) {
+        var cats = app.categories || []
+        return cats.indexOf("WebBrowser") !== -1 || cats.indexOf("TerminalEmulator") !== -1 || cats.indexOf("FileManager") !== -1
+    }
+
+    // the app's windows that are open right now, most recently used first
+    function openWindowsOf(app) {
+        var keys = NotificationState.keysFor(app.name, app.id)
+        return root.windows.filter(function(w) {
+            if (!w.mapped) return false
+            var cls = (w["class"] || "").toLowerCase()
+            for (var i = 0; i < keys.length; i++)
+                if (cls === keys[i] || (w.initialClass || "").toLowerCase() === keys[i]) return true
+            return false
+        }).sort(function(a, b) { return a.focusHistoryID - b.focusHistoryID })
+    }
+
+    function goToResult(app, open) {
+        var w = open[0]
+        return { kind: "window", name: app.name, icon: app.icon, iconSource: Icons.forApp(app), glyph: "󰣆",
+            sub: "Go to the open window · workspace " + w.workspace.id + (open.length > 1 ? " · " + open.length + " windows" : ""),
+            run: function() {
+                Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.focus({ window = 'address:" + w.address + "' })"])
+            } }
+    }
+
     function appResult(app) {
         return { kind: "app", name: app.name, sub: "", icon: app.icon, iconSource: Icons.forApp(app), glyph: "",
             run: function() {
-                NotificationState.focusOrLaunch(app)      // already open? go to it instead of starting a second copy
+                if (root.isMultiWindow(app)) app.execute()            // browsers etc: this card means "a new window"
+                else NotificationState.focusOrLaunch(app)             // single-window apps: already open? go to it
                 AppLauncherState.recordLaunch(app.id)
             } }
     }

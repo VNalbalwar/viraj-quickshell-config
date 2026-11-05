@@ -82,7 +82,7 @@ PanelWindow {
     // ── Launch ─────────────────────────────────────────────────────────────
     function launchEntry(entry) {
         AppLauncherState.recordLaunch(entry.id);
-        NotificationState.focusOrLaunch(entry);   // already open? go to it instead of starting a second copy
+        if ((entry.categories || []).indexOf("WebBrowser") !== -1) entry.execute(); else NotificationState.focusOrLaunch(entry);
         AppLauncherState.hide();
     }
 
