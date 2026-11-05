@@ -221,8 +221,18 @@ PanelWindow {
 
     // The workspace popup is just a notice, so while it is the only thing showing the whole window lets
     // clicks and typing through to the windows underneath instead of making you wait for it to go.
+    // The input region follows where the island is GOING, not every frame of its animation:
+    // re-sending a new region to the compositor 60 times a second was a big part of the opening lag.
+    Item {
+        id: maskBox
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        width: island.goalWidth
+        height: island.goalHeight
+    }
+
     mask: Region {
-        item: wsMode ? null : island
+        item: wsMode ? null : maskBox
         topLeftRadius: 0
         topRightRadius: 0
         bottomLeftRadius: panelMode ? 34 : (osdMode ? 16 : (island.expanded ? 34 : 16))
@@ -319,7 +329,7 @@ PanelWindow {
         scale: barVisible ? 1 : 0.96
         transformOrigin: Item.Top
 
-        implicitWidth:
+        readonly property real goalWidth:
             powerMode ? 550 :
             controlMode ? Ui.width :
             notifMode ? notifView.wantedWidth :
@@ -330,7 +340,9 @@ PanelWindow {
             osdMode ? 500 :
             (expanded ? 680 : (activityKind !== "" ? activityWidth : 200))
 
-        implicitHeight:
+        implicitWidth: goalWidth
+
+        readonly property real goalHeight:
             powerMode ? 124 :
             controlMode ? Ui.height :
             notifMode ? notifView.wantedHeight :
@@ -340,6 +352,7 @@ PanelWindow {
             launcherMode ? 240 :
             osdMode ? 44 :
             (expanded ? 130 : 44)
+        implicitHeight: goalHeight
 
         radius: panelMode ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
         topLeftRadius: 0
@@ -1104,7 +1117,10 @@ PanelWindow {
 
         ThemePanel {
             id: wallpaperView
-            anchors.fill: parent
+            width: 1080                      // its final size: the island grows around it, nothing re-lays out per frame
+            height: 214
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
             active: wallpaperMode
         }
     }

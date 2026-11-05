@@ -41,15 +41,31 @@ Singleton {
         return preset
     }
 
+    // Opening has to be instant: the notch is busy growing, so the lists are refreshed a moment later
+    // (and only if they could have changed), not while it animates.
+    property double lastListed: 0
     function show() {
-        refreshStatus()
-        refreshList()
         selectCurrent()
         if (presets.length === 0) loadPresets()
         root.visible = true
+        refreshSoon.restart()
     }
     function hide() { root.visible = false }
     function toggle() { if (root.visible) hide(); else show() }
+    // each shortcut opens ITS page; pressing the other one while open just switches page
+    function toggleTab(name) {
+        if (root.visible && root.tab === name) { hide(); return }
+        root.tab = name
+        if (!root.visible) show()
+    }
+    Timer {
+        id: refreshSoon
+        interval: 700
+        onTriggered: {
+            root.refreshStatus()
+            if (wallpapers.count === 0 || Date.now() - root.lastListed > 60000) root.refreshList()
+        }
+    }
     function nextTab() { root.tab = root.tab === "wallpapers" ? "themes" : "wallpapers" }
 
     // ── applying (queued, newest wins per kind) ──────────────────────────────────────────────────
@@ -100,6 +116,7 @@ Singleton {
     function loadPresets() { presetProcess.running = false; presetProcess.running = true }
 
     function syncList(items) {
+        root.lastListed = Date.now()
         var same = items.length === wallpapers.count
         for (var i = 0; same && i < items.length; i++)
             if (wallpapers.get(i).path !== items[i].path) same = false
@@ -185,11 +202,11 @@ Singleton {
         root.themeCursor = idx
     }
 
-    Component.onCompleted: { refreshStatus(); loadPresets() }
+    Component.onCompleted: { refreshStatus(); loadPresets(); refreshList() }
 
     IpcHandler {
         target: "wallpaper-switcher"
-        function toggle() { root.toggle() }
+        function toggle() { root.toggleTab("wallpapers") }
         function open() { root.tab = "wallpapers"; root.show() }
         function hide() { root.hide() }
     }
@@ -197,7 +214,7 @@ Singleton {
     // qs ipc call theme toggle | show | preset <Name> | wallpaper <path> | auto
     IpcHandler {
         target: "theme"
-        function toggle() { root.tab = "themes"; root.toggle() }
+        function toggle() { root.toggleTab("themes") }
         function open() { root.tab = "themes"; root.show() }
         function hide() { root.hide() }
         function preset(name: string) { root.applyPreset(name) }
