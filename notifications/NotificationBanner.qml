@@ -195,20 +195,30 @@ Item {
         }
     }
 
-    // time-left bar along the bottom edge (not for critical, which stays)
-    Rectangle {
-        id: timeBar
-        anchors { left: parent.left; bottom: parent.bottom; leftMargin: 34; bottomMargin: 9 }
+    // time-left bar along the bottom edge (not for critical, which stays).
+    // Its width is a fraction of a track that always matches the banner's CURRENT width, so it can never
+    // overflow while the island is still growing / shrinking (a fixed start width used to).
+    Item {
+        id: timeTrack
+        anchors { left: parent.left; right: parent.right; bottom: parent.bottom; leftMargin: 34; rightMargin: 34; bottomMargin: 9 }
         height: 3
-        radius: 1.5
-        color: Colors.alpha(Colors.colBlue, 0.55)
+        clip: true
         visible: banner.n !== null && NotificationState.bannerDuration > 0
+
+        property real remaining: 1
+
+        Rectangle {
+            width: Math.max(0, Math.min(1, timeTrack.remaining)) * parent.width
+            height: parent.height
+            radius: 1.5
+            color: Colors.alpha(Colors.colBlue, 0.55)
+        }
 
         NumberAnimation {
             id: drain
-            target: timeBar
-            property: "width"
-            from: banner.width - 68
+            target: timeTrack
+            property: "remaining"
+            from: 1
             to: 0
             duration: NotificationState.bannerDuration
             running: banner.n !== null && NotificationState.bannerDuration > 0

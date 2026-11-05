@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""reveal-file <path>: show a file in the file manager and go there.
+A file manager window for that folder already open (on any workspace) -> switch to it; otherwise open one
+(here, on the current workspace) with the file selected."""
+import json
+import os
+import subprocess
+import sys
+import time
+
+path = os.path.abspath(sys.argv[1])
+folder = os.path.basename(os.path.dirname(path))
+if os.path.exists(path):
+    cmd = ["nautilus", "--select", path]
+else:                                                   # file already gone: just open its folder
+    cmd = ["nautilus", os.path.dirname(path)]
+subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+
+
+def windows():
+    out = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True).stdout or "[]"
+    return [c for c in json.loads(out) if c.get("mapped") and c["class"] == "org.gnome.Nautilus"]
+
+
+deadline = time.time() + 4
+while time.time() < deadline:
+    time.sleep(0.15)
+    wins = windows()
+    match = [c for c in wins if c["title"] == folder] or []
+    if match:
+        match.sort(key=lambda c: c.get("focusHistoryID", 99))
+        subprocess.run(["hyprctl", "dispatch", "hl.dsp.focus({ window = 'address:%s' })" % match[0]["address"]],
+                       capture_output=True)
+        break

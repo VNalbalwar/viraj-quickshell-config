@@ -141,8 +141,7 @@ Singleton {
     }
 
     function reveal(path) {
-        Quickshell.execDetached(["sh", "-c",
-            "nautilus --select \"$1\" || thunar \"$(dirname \"$1\")\" || xdg-open \"$(dirname \"$1\")\"", "sh", path])
+        Quickshell.execDetached([Quickshell.shellDir + "/extras/reveal-file", path])
     }
 
     function activate() {
