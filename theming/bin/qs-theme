@@ -158,16 +158,12 @@ def hook_hyprland():
     sh("hyprctl", "eval", lua)
 
 
-def hook_gtk(palette):
-    dark = luminance(palette.get("background", "#000000")) < 0.5
-    sh("gsettings", "set", "org.gnome.desktop.interface", "color-scheme", "prefer-dark" if dark else "prefer-light")
-    sh("gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", "adw-gtk3-dark" if dark else "adw-gtk3")
-
-
 def after_colors():
     pal = read_palette()
     hook_hyprland()
-    hook_gtk(pal)
+    sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+    import qs_apps                              # nvim, GTK, Spotify, Zed...: see theming/bin/qs_apps
+    qs_apps.apply_all(pal)
     sh("pkill", "-USR2", "-x", "cava")           # cava re-reads its theme
 
 
@@ -204,10 +200,16 @@ def remember_picture(path):
         f.write(path + "\n")
     with open(os.path.join(HOME, ".cache/current_wallpaper_type"), "w") as f:
         f.write("image\n")
-    try:
-        shutil.copyfile(path, os.path.join(HOME, ".cache/wallpaper_frame.png"))
-    except OSError:
-        pass
+    # a screen-sized copy for the lock screen (blurred anyway): decoding the original, up to 30 MB, is slow
+    frame = os.path.join(HOME, ".cache/wallpaper_frame.png")
+    r = sh("vipsthumbnail", path, "--size", "1920x1200", "-o", frame + ".tmp.png")
+    if r.returncode == 0 and os.path.exists(frame + ".tmp.png"):
+        os.replace(frame + ".tmp.png", frame)
+    else:
+        try:
+            shutil.copyfile(path, frame)
+        except OSError:
+            pass
 
 
 def cmd_wallpaper(path):

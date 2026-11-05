@@ -1,18 +1,18 @@
 # wallust config used by qs-theme (theming/bin/qs-theme). ~/.config/wallust points here.
-# Everything that follows the colors is listed under [templates]: one line per app.
-# Add an app = drop a template in templates/ and add a line here (see `man wallust.5`).
-
+# How colors are taken from a picture (named themes ignore this):
 backend = "fastresize"
 color_space = "lch"
 palette = "dark16"
 
 [templates]
-quickshell = { template = 'quickshell.json', target = '~/.cache/wallust/quickshell.json' }
-kitty      = { template = 'kitty.conf',      target = '~/.cache/wallust/colors-kitty.conf' }
-hyprland   = { template = 'hyprland.lua',    target = '~/.cache/wallust/colors-hyprland.lua' }
-hyprland-conf = { template = 'hyprland.conf', target = '~/.cache/wallust/colors-hyprland.conf' }
-hyprlock   = { template = 'hyprlock.conf',   target = '~/.cache/wallust/colors-hyprlock.conf' }
-gtk3       = { template = 'gtk.css',         target = '~/.config/gtk-3.0/gtk.css' }
-cava       = { template = 'cava',            target = '~/.config/cava/themes/wallust' }
-swaync     = { template = 'swaync.css',      target = '~/.cache/wallust/colors-swaync.css' }
-waybar     = { template = 'waybar.css',      target = '~/.cache/wallust/colors-waybar.css' }
+# one line per app that follows the colors (templates/ holds the template)
+quickshell    = { template = 'quickshell.json', target = '~/.cache/wallust/quickshell.json' }
+kitty         = { template = 'kitty.conf',      target = '~/.cache/wallust/colors-kitty.conf' }
+hyprland      = { template = 'hyprland.lua',    target = '~/.cache/wallust/colors-hyprland.lua' }
+hyprland-conf = { template = 'hyprland.conf',   target = '~/.cache/wallust/colors-hyprland.conf' }
+hyprlock      = { template = 'hyprlock.conf',   target = '~/.cache/wallust/colors-hyprlock.conf' }
+cava          = { template = 'cava',            target = '~/.config/cava/themes/wallust' }
+
+# Not here, because they are generated in Python (they need computed shades / live reload):
+#   neovim, GTK3/GTK4 (Nautilus, Thunar...), Spotify, Zed  ->  bin/qs_apps/
+# Retired templates (Waybar, swaync, Rofi) live in wallust/unused/.

@@ -18,8 +18,14 @@ Keys: `SUPER+P` wallpapers, `SUPER+SHIFT+P` themes. In the panel: ← → move, 
 Wallpapers are read from `~/Pictures/Hyprland-Wallpapers` and `~/Pictures/Wallpapers` (`wallpaperDirs` in
 `ThemeState.qml`); small previews are cached in `~/.cache/qs-theme/thumbs`.
 
-Apps that follow the colors: the shell, kitty (and every open terminal, live), Hyprland borders (live), GTK3 + dark/light
-switch, cava, hyprlock variables (`~/.cache/wallust/colors-hyprlock.conf`). Add an app = a template + one line in `wallust/wallust.toml`.
+Apps that follow the colors, and how:
+- Live, instantly: the shell (notch, control center, lock screen), kitty and every open terminal, Hyprland borders, cava,
+  **Neovim** (every running instance, via its socket), **Zed** (select the "Wallust" theme once).
+- On next start: GTK3/GTK4/libadwaita apps (Nautilus, Thunar...) - GTK has no way to reload CSS in a running app.
+- After a one-time setup: **Spotify** via spicetify (`theming/extras/spotify-setup.sh`), then it refreshes live.
+- Generated, not yet used: hyprlock color variables (the real lock screen is `lockscreen/`, in QML).
+Each app is a small file in `bin/qs_apps/`; add one to `MODULES` in `bin/qs_apps/__init__.py`. Retired Waybar/swaync/Rofi
+templates are kept in `wallust/unused/`.
 
 CLI: `qs-theme wallpaper <file>` · `qs-theme preset Nord` · `qs-theme auto` · `qs-theme status`
 (all ~400 wallust themes work: `wallust theme list`). IPC: `qs ipc call theme preset Nord`.
