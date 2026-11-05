@@ -245,7 +245,7 @@ Item {
                 spacing: 6
 
                 Text {
-                    text: OsdState.batteryState === "charging" ? "󰂄" : "󰁹"
+                    text: (OsdState.batteryState === "charging" || OsdState.pluggedIn) ? "󰂄" : "󰁹"
                     color: Colors.fg
                     anchors.verticalCenter: parent.verticalCenter
                     font { family: Ui.iconFont; pixelSize: 17 }

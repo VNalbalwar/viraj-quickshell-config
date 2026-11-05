@@ -391,12 +391,31 @@ PanelWindow {
         }
 
         Text {
+            id: clockText
             anchors.centerIn: parent
             opacity: (island.expanded || activityKind === "timer" || activityKind === "recording") ? 0 : 1
             text: Qt.formatDateTime(clock.date, "hh:mm")
             color: Colors.fg
             font { pixelSize: 16; weight: 600 }
             Behavior on opacity { NumberAnimation { duration: 150 } }
+        }
+
+        // plugged in: a bolt next to the clock for as long as the charger is connected, gone when it isn't
+        Text {
+            anchors { verticalCenter: clockText.verticalCenter; right: clockText.left; rightMargin: 6 }
+            text: "󱐋"
+            color: Colors.colBrightGreen
+            font { family: "JetBrainsMono Nerd Font"; pixelSize: 16 }
+            opacity: (OsdState.pluggedIn && clockText.opacity > 0.5) ? 1 : 0
+            scale: OsdState.pluggedIn ? 1 : 0.4
+            Behavior on opacity { NumberAnimation { duration: 220 } }
+            Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+            SequentialAnimation on y {
+                running: OsdState.pluggedIn
+                loops: Animation.Infinite
+                NumberAnimation { from: 0; to: -1.5; duration: 1100; easing.type: Easing.InOutSine }
+                NumberAnimation { from: -1.5; to: 0; duration: 1100; easing.type: Easing.InOutSine }
+            }
         }
 
         // The OSD only owns the notch when no other panel is open; otherwise it

@@ -44,6 +44,8 @@ Singleton {
     property bool wifiInitialized: false
 
     readonly property var batteryDevice: UPower.displayDevice
+    // on mains power (charging or full): drives the little bolt next to the clock
+    readonly property bool pluggedIn: !UPower.onBattery
 
     function readBrightness() { brightnessProcess.running = true }
     function readVolume() { volumeProcess.running = true }
