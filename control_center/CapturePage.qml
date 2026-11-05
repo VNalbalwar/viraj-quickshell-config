@@ -53,11 +53,12 @@ Page {
             var geo = region ? '-g "$g" ' : ''
             recorder.command = ["sh", "-c",
                 sel + 'dev=$(readlink -f /dev/dri/by-path/pci-0000:00:02.0-render); ' +
-                'if [ -e /usr/lib/dri/iHD_drv_video.so ] && [ -e "$dev" ]; then enc="-c h264_vaapi -d $dev -r 120"; else enc="-p preset=ultrafast -p crf=28"; fi; ' +
+                'if [ -e /usr/lib/dri/iHD_drv_video.so ] && [ -e "$dev" ]; then enc="-c h264_vaapi -d $dev -r 60 -p b=16000000 -p level=52"; else enc="-p preset=ultrafast -p crf=28"; fi; ' +
                 // sound: whatever is playing through your speakers / headphones (the default output's monitor)
                 'aud="-a$(pactl get-default-sink).monitor"; ' +
-                // -r 120: a steady 120 fps. Without it the file gets irregular frame timing (about 88 fps on average)
-                // that players show as judder, even though the screen itself is 240 Hz.
+                // -r 60: a steady 60 fps. Capture tops out around 80 fps on this machine, so asking for 90 or 120 made
+                // the file play back FAST and jerky (an 8 s recording came out 5 s long). Level 5.2 + 16 Mbit/s keeps
+                // 2560x1600 at 60 fps within what players' decoders accept, and sharp.
                 'exec wf-recorder $enc $aud ' + geo + '-f "$1"', "sh", out]
             recorder.running = true
         }
