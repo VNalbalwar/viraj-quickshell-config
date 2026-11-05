@@ -26,9 +26,45 @@ Singleton {
 
     property var windows: []
 
+    property var recentFiles: []          // [{ path, name, dir }] newest first
+    property string lastScreenshot: ""
+
     function refresh() {
         windowsProcess.running = false
         windowsProcess.running = true
+        recentProcess.running = false
+        recentProcess.running = true
+        ClipboardState.refresh()
+    }
+
+    // what you touched lately in the places you actually keep things (no hidden files, no caches)
+    Process {
+        id: recentProcess
+        command: ["sh", "-c",
+            "find \"$HOME/Documents\" \"$HOME/Downloads\" \"$HOME/Desktop\" \"$HOME/Pictures\" \"$HOME/Videos\" -maxdepth 3 -type f " +
+            "-not -path '*/.*' -not -path '*/node_modules/*' -printf '%T@\\t%p\\n' 2>/dev/null | sort -rn | head -60 | cut -f2"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var list = text.trim() === "" ? [] : text.trim().split("\n")
+                root.recentFiles = list.map(function(path) {
+                    var i = path.lastIndexOf("/")
+                    return { path: path, name: path.slice(i + 1), dir: path.slice(0, i).replace(/^\/home\/[^\/]+/, "~") }
+                })
+                var shots = root.recentFiles.filter(function(f) { return /hyprshot|screenshot|screen[ _-]?shot/i.test(f.name) })
+                root.lastScreenshot = shots.length > 0 ? shots[0].path : ""
+            }
+        }
+    }
+
+    function fileResult(f) {
+        var ext = (f.name.split(".").pop() || "").toLowerCase()
+        var glyph = /^(png|jpe?g|webp|gif|svg|bmp)$/.test(ext) ? "󰋩"
+                  : /^(mp4|mkv|webm|mov|avi)$/.test(ext) ? "󰕧"
+                  : /^(mp3|flac|wav|ogg|m4a)$/.test(ext) ? "󰎆"
+                  : /^(pdf)$/.test(ext) ? "󰈦"
+                  : /^(zip|tar|gz|xz|7z|rar)$/.test(ext) ? "󰗄" : "󰈔"
+        return { kind: "file", name: f.name, sub: "File · " + f.dir, icon: "", glyph: glyph,
+            run: function() { Quickshell.execDetached(["xdg-open", f.path]) } }
     }
 
     Process {
@@ -182,6 +218,44 @@ Singleton {
                         run: function() { Quickshell.execDetached(a.cmd) } })
                 }
             })
+        }
+
+        // quick actions
+        var quick = [
+            { keys: ["last screenshot", "screenshot", "latest screenshot", "open screenshot"], when: root.lastScreenshot !== "",
+              name: "Open last screenshot", sub: root.lastScreenshot.replace(/^.*\//, ""), glyph: "󰋩",
+              run: function() { Quickshell.execDetached(["xdg-open", root.lastScreenshot]) } },
+            { keys: ["last download", "latest download", "download"], when: true, name: "Open Downloads folder", sub: "~/Downloads", glyph: "󰉍",
+              run: function() { Quickshell.execDetached(["xdg-open", Quickshell.env("HOME") + "/Downloads"]) } },
+            { keys: ["screenshot area", "take screenshot", "capture"], when: true, name: "Take a screenshot", sub: "Select an area", glyph: "󰹑",
+              run: function() { ControlState.screenshot() } }
+        ]
+        quick.forEach(function(a) {
+            if (!a.when) return
+            for (var i = 0; i < a.keys.length; i++)
+                if (q.length >= 3 && a.keys[i].indexOf(q) === 0) {
+                    out.push({ kind: "action", name: a.name, sub: a.sub, icon: "", glyph: a.glyph, run: a.run })
+                    return
+                }
+        })
+
+        // recent files: "recent" / "files" lists the latest, otherwise match by name
+        var onlyRecent = /^(recent|recents|recent files|files)$/.test(q)
+        var fileHits = root.recentFiles.filter(function(f) {
+            return onlyRecent || (q.length >= 2 && root.matches(f.name, q))
+        }).slice(0, onlyRecent ? 8 : 4)
+        out = out.concat(fileHits.map(root.fileResult))
+
+        // clipboard history: text you copied earlier that matches
+        if (q.length >= 3) {
+            var clips = ClipboardState.entries.filter(function(e) {
+                return e.preview.toLowerCase().indexOf(q) !== -1
+            }).slice(0, 3)
+            out = out.concat(clips.map(function(c) {
+                return { kind: "clip", name: c.preview.length > 60 ? c.preview.slice(0, 60) + "…" : c.preview,
+                    sub: "Clipboard · Enter to copy again", icon: "", glyph: "󰅌",
+                    run: function() { ClipboardState.copy(c.id) } }
+            }))
         }
 
         // 5. always last: search the web
