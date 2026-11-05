@@ -351,7 +351,7 @@ PanelWindow {
             wallpaperMode ? 214 :
             launcherMode ? 240 :
             osdMode ? 44 :
-            (expanded ? 130 : 44)
+            (expanded ? 146 : 44)
         implicitHeight: goalHeight
 
         radius: panelMode ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
@@ -859,9 +859,9 @@ PanelWindow {
             Row {
                 id: glance
                 // the "N playing" chip sits under the artwork when several things play: start after it, not on top of it
-                anchors { left: parent.left; leftMargin: MediaState.count > 1 ? 134 : 32; bottom: parent.bottom; bottomMargin: 9 }
+                anchors { left: parent.left; leftMargin: MediaState.count > 1 ? 140 : 36; bottom: parent.bottom; bottomMargin: 14 }
                 Behavior on anchors.leftMargin { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-                spacing: 14
+                spacing: 20
                 visible: !wallpaperMode
                 Component.onCompleted: SystemStats.watching = Qt.binding(function() { return island.expanded && glance.visible && !panelMode })
                 Repeater {
@@ -883,7 +883,7 @@ PanelWindow {
             Row {
                 anchors { right: parent.right; rightMargin: 18; top: parent.top; topMargin: 11 }
                 spacing: 5
-                opacity: WeatherState.ready ? 0.9 : 0
+                opacity: (WeatherState.ready && WeatherState.online) ? 0.9 : 0
                 Behavior on opacity { NumberAnimation { duration: 300 } }
                 Text { text: WeatherState.glyph; color: Colors.colBlue; font { family: "JetBrainsMono Nerd Font"; pixelSize: 13 } }
                 Text { text: Math.round(WeatherState.temp) + "°"; color: Colors.fg; font { pixelSize: 11; weight: Font.DemiBold } }

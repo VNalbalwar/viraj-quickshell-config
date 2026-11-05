@@ -72,6 +72,24 @@ Singleton {
         }
     }
 
+    // Is there internet at all? NetworkManager knows within seconds, so the chip hides the moment you go
+    // offline and a fresh reading is fetched the moment you're back (no waiting for the next timer tick).
+    property bool online: true
+    Process {
+        id: netCheck
+        command: ["nmcli", "-t", "-g", "CONNECTIVITY", "general"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var up = text.trim() === "full"
+                if (up === root.online) return
+                root.online = up
+                if (up) { root.failures = 0; root.refresh() }
+                else root.ready = false
+            }
+        }
+    }
+    Timer { interval: 10000; repeat: true; running: true; onTriggered: netCheck.running = true }
+
     // every 15 minutes normally; every minute while we have no reading (offline), so it reappears quickly
     Timer {
         interval: (root.ready && root.failures === 0) ? 900000 : 60000
