@@ -4,6 +4,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Shapes
+import QtQuick.Effects
 import Quickshell.Widgets
 import "../theming"
 import "../app_launcher"
@@ -443,21 +444,44 @@ PanelWindow {
             Behavior on opacity { NumberAnimation { duration: Motion.fast } }
         }
 
-        // plugged in: a bolt beside the clock for as long as the charger is connected, gone when it isn't
-        Text {
+        // plugged in: a neon bolt beside the clock, glowing in the theme's accent colour
+        Item {
+            id: boltSlot
             anchors { verticalCenter: clockText.verticalCenter; left: clockText.right; leftMargin: 6 }   // right of the clock: the left side belongs to the workspace dots
-            text: "󱐋"
-            color: Colors.colBrightGreen
-            font { family: "JetBrainsMono Nerd Font"; pixelSize: 16 }
+            width: bolt.implicitWidth
+            height: bolt.implicitHeight
             opacity: (OsdState.pluggedIn && clockText.opacity > 0.5) ? 1 : 0
             scale: OsdState.pluggedIn ? 1 : 0.4
             Behavior on opacity { NumberAnimation { duration: Motion.base } }
             Behavior on scale { NumberAnimation { duration: Motion.slide; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
-            SequentialAnimation on y {
-                running: OsdState.pluggedIn
-                loops: Animation.Infinite
-                NumberAnimation { from: 0; to: -1.5; duration: 1100; easing.type: Easing.InOutSine }
-                NumberAnimation { from: -1.5; to: 0; duration: 1100; easing.type: Easing.InOutSine }
+
+            // the glow: a blurred, colourised copy behind the crisp bolt, breathing slowly
+            MultiEffect {
+                anchors.centerIn: bolt
+                width: bolt.width + 24
+                height: bolt.height + 24
+                source: bolt
+                autoPaddingEnabled: false
+                blurEnabled: true
+                blur: 1.0
+                blurMax: 20
+                colorization: 1.0
+                colorizationColor: Colors.neon
+                brightness: 0.4
+                opacity: 0.55
+                SequentialAnimation on opacity {
+                    running: OsdState.pluggedIn
+                    loops: Animation.Infinite
+                    NumberAnimation { from: 0.35; to: 0.9; duration: 1300; easing.type: Motion.ease }
+                    NumberAnimation { from: 0.9; to: 0.35; duration: 1300; easing.type: Motion.ease }
+                }
+            }
+
+            Text {
+                id: bolt
+                text: "󱐋"
+                color: Colors.neon
+                font { family: "JetBrainsMono Nerd Font"; pixelSize: 16 }
             }
         }
 

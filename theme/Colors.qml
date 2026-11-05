@@ -56,6 +56,9 @@ Singleton {
         return Qt.rgba(c.r, c.g, c.b, a)
     }
     
+    // a neon take on the theme's accent: full saturation, bright - for things that should glow
+    readonly property color neon: colBlue.hslHue < 0 ? Qt.hsla(0.38, 1.0, 0.58, 1) : Qt.hsla(colBlue.hslHue, 1.0, 0.58, 1)
+
     readonly property color colBg: root.palette.background || "#1d2021"
     readonly property color colFg: root.palette.foreground || "#d4be98"
 
