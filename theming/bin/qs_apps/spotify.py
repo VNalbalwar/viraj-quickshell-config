@@ -28,7 +28,8 @@ def color_ini(p):
 
 
 def apply(p):
-    if shutil.which("spicetify") is None:
+    exe = shutil.which("spicetify") or os.path.join(HOME, ".local/bin/spicetify")
+    if not os.access(exe, os.X_OK):
         return                                         # not set up: nothing to do (see spotify-setup.sh)
     os.makedirs(THEME_DIR, exist_ok=True)
     ini = os.path.join(THEME_DIR, "color.ini")
@@ -44,4 +45,4 @@ def apply(p):
     if not os.path.exists(css):
         open(css, "w").close()
     # live: re-inject colors into the running Spotify (falls back to nothing if it isn't running)
-    subprocess.run(["spicetify", "-q", "refresh", "-s"], capture_output=True, timeout=20)
+    subprocess.run([exe, "-q", "refresh", "-s"], capture_output=True, timeout=20)

@@ -2,8 +2,19 @@
 # One-time setup so Spotify follows the wallpaper / theme (needs sudo once, so you run it).
 #   spicetify patches Spotify's client; after this, qs-theme refreshes the running Spotify on every change.
 set -euo pipefail
-echo "1/4 installing spicetify-cli (AUR)"
-command -v spicetify >/dev/null || yay -S --needed spicetify-cli
+echo "1/4 installing spicetify-cli (official prebuilt release, no compiling)"
+# The AUR package builds with pnpm, which can't resolve DNS inside makepkg here; the release binary is the same program.
+if ! command -v spicetify >/dev/null; then
+    VER=2.46.4
+    TMP="$(mktemp -d)"
+    curl -fsSL "https://github.com/spicetify/cli/releases/download/v${VER}/spicetify-${VER}-linux-amd64.tar.gz" -o "$TMP/s.tgz"
+    mkdir -p ~/.local/bin
+    tar -xzf "$TMP/s.tgz" -C "$TMP" spicetify
+    install -m755 "$TMP/spicetify" ~/.local/bin/spicetify
+    rm -rf "$TMP"
+fi
+export PATH="$HOME/.local/bin:$PATH"
+spicetify --version
 echo "2/4 letting your user patch Spotify (needs sudo, one time)"
 sudo chmod a+wr /opt/spotify
 sudo chmod a+wr -R /opt/spotify/Apps
