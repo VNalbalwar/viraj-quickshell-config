@@ -28,6 +28,8 @@ Singleton {
     property var banner: null            // live Notification being shown
     property bool hovering: false        // pointer is on the banner (pauses expiry)
     property int bannerDuration: 5000
+    property real bannerRemaining: 0     // ms left; the time bar draws exactly this, and 0 closes the banner
+    property int pausedMs: 0             // how long the pointer has held the banner (capped, see tickTimer)
     property var queue: []               // live Notifications waiting for the banner
 
     readonly property alias history: historyModel
@@ -59,7 +61,6 @@ Singleton {
         n.closed.connect(function() {
             root.queue = root.queue.filter(function(q) { return q !== n })
             if (root.banner === n) {
-                bannerTimer.stop()
                 root.hovering = false
                 root.banner = null
                 nextTimer.restart()
@@ -108,20 +109,24 @@ Singleton {
     function armTimer() {
         var n = root.banner
         if (n === null) return
-        bannerTimer.stop()
         if (n.urgency === NotificationUrgency.Critical) {
             root.bannerDuration = 0              // critical stays until dealt with
+            root.bannerRemaining = 0
             return
         }
         var secs = n.expireTimeout
-        root.bannerDuration = secs > 0 ? Math.round(secs * 1000) : root.defaultTimeout
-        if (!root.hovering) bannerTimer.restart()
+        // the daemon reports an app's requested timeout in milliseconds (notify-send -t 3000 -> 3000), but the old code
+        // multiplied it by 1000 again: 3000 ms became 50 minutes. That is why some banners never left.
+        // (Anything under 100 is taken as seconds.) Capped so no app can park a banner for long.
+        var ms = secs >= 100 ? secs : secs * 1000
+        root.bannerDuration = secs > 0 ? Math.min(Math.round(ms), 15000) : root.defaultTimeout
+        root.bannerRemaining = root.bannerDuration
+        root.pausedMs = 0
     }
 
     function closeBanner(userDismissed) {
         var n = root.banner
         if (n === null) return
-        bannerTimer.stop()
         root.hovering = false
         root.banner = null
         if (userDismissed) n.dismiss()
@@ -278,10 +283,21 @@ Singleton {
         closeBanner(true)
     }
 
+    // One clock does both jobs: it counts the banner down (the time bar draws bannerRemaining) and closes it at 0.
+    // Holding the pointer on the banner pauses it (after the first 1.5 s), but for at most 2.5 s in total, so a pointer
+    // that just happens to be resting where a banner appears can never keep it there.
     Timer {
-        id: bannerTimer
-        onTriggered: root.closeBanner(false)
-        interval: root.bannerDuration
+        id: tickTimer
+        interval: 50
+        repeat: true
+        running: root.banner !== null && root.bannerDuration > 0
+        onTriggered: {
+            // (hover is ignored for the first 1.5 s: the island growing under a resting pointer makes a fake "move")
+            var settled = root.bannerDuration - root.bannerRemaining > 1500
+            if (root.hovering && settled && root.pausedMs < 2500) { root.pausedMs += 50; return }
+            root.bannerRemaining -= 50
+            if (root.bannerRemaining <= 0) root.closeBanner(false)
+        }
     }
 
     Timer {
@@ -290,11 +306,6 @@ Singleton {
         onTriggered: root.nextBanner()
     }
 
-    onHoveringChanged: {
-        if (root.banner === null || root.bannerDuration === 0) return
-        if (root.hovering) bannerTimer.stop()
-        else bannerTimer.restart()
-    }
 
     // ── do not disturb ───────────────────────────────────────────────────────
     function setDnd(on) {

@@ -37,9 +37,6 @@ Item {
     // a verified icon source, or "" (-> the bell glyph) - never somebody else's fallback logo
     function iconSource(notification) { return Icons.forNotification(notification) }
 
-    HoverHandler {
-        onHoveredChanged: NotificationState.hovering = hovered
-    }
 
     // card background tap: run the default action and jump to the source window
     scale: bannerMouse.pressed ? 0.975 : 1.0
@@ -48,7 +45,11 @@ Item {
     MouseArea {
         id: bannerMouse
         anchors.fill: parent
+        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        // only real movement over the banner pauses it (a pointer merely resting where it appeared doesn't)
+        onPositionChanged: NotificationState.hovering = true
+        onExited: NotificationState.hovering = false
         onClicked: NotificationState.activate()
     }
 
@@ -205,7 +206,8 @@ Item {
         clip: true
         visible: banner.n !== null && NotificationState.bannerDuration > 0
 
-        property real remaining: 1
+        // exactly what the clock has left (1 -> 0)
+        readonly property real remaining: NotificationState.bannerDuration > 0 ? NotificationState.bannerRemaining / NotificationState.bannerDuration : 1
 
         Rectangle {
             width: Math.max(0, Math.min(1, timeTrack.remaining)) * parent.width
@@ -214,20 +216,5 @@ Item {
             color: Colors.alpha(Colors.colBlue, 0.55)
         }
 
-        NumberAnimation {
-            id: drain
-            target: timeTrack
-            property: "remaining"
-            from: 1
-            to: 0
-            duration: NotificationState.bannerDuration
-            running: banner.n !== null && NotificationState.bannerDuration > 0
-            paused: NotificationState.hovering
-        }
-
-        Connections {
-            target: NotificationState
-            function onBannerChanged() { if (NotificationState.banner !== null) drain.restart() }
-        }
     }
 }
