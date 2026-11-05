@@ -5,7 +5,7 @@ import importlib
 import sys
 import traceback
 
-MODULES = ["nvim", "gtk", "spotify", "zed"]
+MODULES = ["nvim", "gtk", "spotify", "zed", "chrome"]
 
 
 def _run(name, pal):
