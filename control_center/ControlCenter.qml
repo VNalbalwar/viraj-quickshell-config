@@ -4,6 +4,7 @@ import QtQuick
 import "../theme"
 import "../osd"
 import "../notifications"
+import "../activity"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ControlCenter — lives INSIDE the notch (Bar.qml hosts it, like the power
@@ -133,10 +134,34 @@ Item {
         {
             icon: "󰹑",
             label: "Capture",
-            sub: "Region",
+            sub: "Shots · record",
             on: false,
             detail: "",
-            trigger: function() { ControlState.screenshot() }
+            trigger: function() { ControlState.openPage("capture") }
+        },
+        {
+            icon: "󰷗",
+            label: "Notes",
+            sub: NotesState.todos.count + " to-dos",
+            on: false,
+            detail: "",
+            trigger: function() { ControlState.openPage("notes") }
+        },
+        {
+            icon: "󱎫",
+            label: "Focus",
+            sub: ActivityState.timerEnd > Date.now() ? "Running" : "Pomodoro",
+            on: ActivityState.timerEnd > Date.now(),
+            detail: "",
+            trigger: function() { ControlState.openPage("focus") }
+        },
+        {
+            icon: "󰃭",
+            label: "Calendar",
+            sub: Qt.formatDate(new Date(), "ddd d MMM"),
+            on: false,
+            detail: "",
+            trigger: function() { ControlState.openPage("calendar") }
         },
         {
             icon: "󰅌",
@@ -157,7 +182,7 @@ Item {
     }
 
     readonly property var pageItems: ({
-        wifi: wifiPage, bluetooth: bluetoothPage, audio: audioPage, clipboard: clipboardPage, keys: keysPage, notifications: notificationsPage, hotspot: hotspotPage, keyboard: keyboardPage
+        wifi: wifiPage, bluetooth: bluetoothPage, audio: audioPage, clipboard: clipboardPage, keys: keysPage, notifications: notificationsPage, hotspot: hotspotPage, keyboard: keyboardPage, notes: notesPage, focus: focusPage, calendar: calendarPage, capture: capturePage
     })
 
     Keys.onPressed: function(event) {
@@ -216,7 +241,7 @@ Item {
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", audio: "Sound", clipboard: "Clipboard", keys: "Keybinds", notifications: "Notifications", hotspot: "Hotspot", keyboard: "Keyboard" })[cc.page] || ""
+                text: ({ wifi: "Wi-Fi", bluetooth: "Bluetooth", audio: "Sound", clipboard: "Clipboard", keys: "Keybinds", notifications: "Notifications", hotspot: "Hotspot", keyboard: "Keyboard", notes: "Notes", focus: "Focus", calendar: "Calendar", capture: "Capture" })[cc.page] || ""
                 color: Colors.fg
                 font { pixelSize: 16; weight: Font.DemiBold }
             }
@@ -350,4 +375,8 @@ Item {
     NotificationsPage { id: notificationsPage }
     HotspotPage { id: hotspotPage }
     KeyboardPage { id: keyboardPage }
+    NotesPage { id: notesPage }
+    FocusPage { id: focusPage }
+    CalendarPage { id: calendarPage }
+    CapturePage { id: capturePage }
 }
