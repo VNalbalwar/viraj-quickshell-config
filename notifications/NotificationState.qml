@@ -190,18 +190,24 @@ Singleton {
     }
 
     // all the ways an app might name itself: desktop entry, app name, "google-chrome" for "Google Chrome"...
-    function keysFor(app, entry) {
+    function keysFor(app, entry, strict) {
         var keys = []
-        function add(s) {
+        function add(s, loose) {
             s = (s || "").toLowerCase().replace(/\.desktop$/, "").trim()
             if (s.length < 2) return
-            [s, s.replace(/\s+/g, "-"), s.split(/[\s.]/)[0]].forEach(function(k) {
+            var forms = [s, s.replace(/\s+/g, "-")]
+            if (loose) forms.push(s.split(/[\s.]/)[0])       // "com.microsoft.VSCode" -> "com": fine for guessing, not for launching
+            else if (s.indexOf(".") !== -1) forms.push(s.split(".").pop())     // ... -> "vscode", "nautilus"
+            forms.forEach(function(k) {
                 if (k.length >= 2 && keys.indexOf(k) === -1) keys.push(k)
             })
         }
-        add(entry)
-        add(app)
-        add(root.pendingClass)
+        add(entry, !strict)
+        add(app, !strict)
+        add(root.pendingClass, false)
+        // apps whose window class differs from their desktop entry
+        var alias = { "vscode": "code", "visual-studio-code": "code" }
+        keys.slice().forEach(function(k) { if (alias[k] && keys.indexOf(alias[k]) === -1) keys.push(alias[k]) })
         return keys
     }
 
@@ -217,6 +223,9 @@ Singleton {
             for (var j = 0; j < keys.length; j++) {
                 var k = keys[j]
                 if (cls === k || icls === k) score = Math.max(score, 100)
+                else if (classOnly) {
+                    if (k.length >= 3 && cls.endsWith("." + k)) score = Math.max(score, 80)      // launching: exact names only
+                }
                 else if (cls.length && (cls.endsWith("." + k) || cls.indexOf(k) !== -1)) score = Math.max(score, 60)
                 else if (icls.indexOf(k) !== -1) score = Math.max(score, 55)
                 else if (!classOnly && k.length >= 3 && title.indexOf(k) !== -1) score = Math.max(score, 30)
@@ -236,7 +245,7 @@ Singleton {
             onStreamFinished: {
                 try {
                     var launching = root.pendingLaunch
-                    var win = root.bestWindow(JSON.parse(text), root.keysFor(root.pendingApp, root.pendingEntry), launching !== null)
+                    var win = root.bestWindow(JSON.parse(text), root.keysFor(root.pendingApp, root.pendingEntry, launching !== null), launching !== null)
                     root.pendingLaunch = null
                     root.pendingClass = ""
                     if (!win && launching) launching.execute()

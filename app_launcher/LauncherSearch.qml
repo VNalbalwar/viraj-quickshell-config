@@ -272,7 +272,7 @@ Singleton {
 
     // the app's windows that are open right now, most recently used first
     function openWindowsOf(app) {
-        var keys = NotificationState.keysFor(app.name, app.id)
+        var keys = NotificationState.keysFor(app.name, app.id, true)
         return root.windows.filter(function(w) {
             if (!w.mapped) return false
             var cls = (w["class"] || "").toLowerCase()
