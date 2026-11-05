@@ -14,7 +14,9 @@ Page {
     onActivateRequested: {
         if (listIndex >= count) return
         var e = NotificationState.history.get(listIndex)
-        NotificationState.focusSource(e.app, e.entry)
+        var file = NotificationState.capturePath(e.app, e.body, e.icon)
+        if (file !== "") NotificationState.reveal(file)
+        else NotificationState.focusSource(e.app, e.entry)
         NotificationState.removeFromHistory(listIndex)
         ControlState.hide()
     }
@@ -37,6 +39,7 @@ Page {
             required property string summary
             required property string body
             required property string entry
+            required property string icon
             required property real time
             required property int urgency
             required property int index
@@ -53,7 +56,9 @@ Page {
 
             onEntered: page.listIndex = index
             onClicked: {
-                NotificationState.focusSource(app, entry)
+                var file = NotificationState.capturePath(app, body, icon)
+                if (file !== "") NotificationState.reveal(file)
+                else NotificationState.focusSource(app, entry)
                 NotificationState.removeFromHistory(index)
                 ControlState.hide()
             }

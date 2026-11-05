@@ -131,10 +131,26 @@ Singleton {
 
     // Click on the banner: run the app's own default action (if it has one) and take
     // you to the window the notification came from - even on another workspace.
+    // Screenshots (hyprshot) and recordings (Capture page) say where the file is: icon = the image itself,
+    // or "<i>/path/file</i>" in the body. Clicking such a notification reveals that file in the file manager.
+    function capturePath(app, body, icon) {
+        if (!/^(hyprshot|capture)$/i.test(app || "")) return ""
+        if (icon && icon.charAt(0) === "/" && /\.(png|jpe?g|webp|gif|mp4|mkv|webm)$/i.test(icon)) return icon
+        var m = (body || "").match(/<i>([^<]+)<\/i>/)
+        return m ? m[1] : ""
+    }
+
+    function reveal(path) {
+        Quickshell.execDetached(["sh", "-c",
+            "nautilus --select \"$1\" || thunar \"$(dirname \"$1\")\" || xdg-open \"$(dirname \"$1\")\"", "sh", path])
+    }
+
     function activate() {
         var n = root.banner
         if (n === null) return
         var app = n.appName, entry = n.desktopEntry
+        var file = root.capturePath(app, n.body, n.appIcon)
+        if (file !== "") { closeBanner(true); root.reveal(file); return }
         for (var i = 0; i < n.actions.length; i++)
             if (n.actions[i].identifier === "default") n.actions[i].invoke()
         closeBanner(true)

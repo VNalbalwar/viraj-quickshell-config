@@ -41,6 +41,18 @@ Singleton {
         var body = n.body || ""
         var out = { label: n.appName || "", title: summary, body: body, plain: false, icon: "" }
 
+        // screenshots / recordings: the file name and folder, not a wall of path
+        if (/^(hyprshot|capture)$/i.test(n.appName || "")) {
+            var f = NotificationState.capturePath(n.appName, body, n.appIcon)
+            if (f !== "") {
+                var slash = f.lastIndexOf("/")
+                out.label = "Capture"
+                out.body = f.slice(slash + 1) + "  ·  " + f.slice(0, slash).replace(/^\/home\/[^\/]+/, "~") + "  ·  click to show"
+                out.plain = true
+                return out
+            }
+        }
+
         var m = null
         if (isBrowser(n.appName)) {
             m = body.match(/^\s*([a-z0-9][a-z0-9.-]*\.[a-z]{2,})\s*[~|·–—-]\s*([\s\S]*)$/i)          // "site ~ message"

@@ -12,6 +12,7 @@ Page {
     property bool recording: false
     property int seconds: 0
     property bool haveRecorder: false
+    property string lastFile: ""
 
     onShownChanged: if (shown) { probe.running = false; probe.running = true; LauncherSearch.refresh() }
 
@@ -44,6 +45,7 @@ Page {
             var out = Quickshell.env("HOME") + "/Videos/recording-" + Qt.formatDateTime(new Date(), "yyyy-MM-dd-hhmmss") + ".mp4"
             page.seconds = 0
             page.recording = true
+            page.lastFile = out
             // Hardware (Intel VA-API) encoding when the driver is there: the screen is copied and encoded on the GPU, so
             // your 240 Hz desktop stays smooth. Without it wf-recorder copies every frame through the CPU (~4 cores busy).
             // slurp gets </dev/null: with an open stdin pipe it waits for a list of regions instead of letting you drag one.
@@ -56,7 +58,17 @@ Page {
             recorder.running = true
         }
     }
-    Process { id: recorder; onExited: { page.recording = false; page.seconds = 0 } }
+    Process {
+        id: recorder
+        onExited: {
+            page.recording = false
+            page.seconds = 0
+            // tell you where it went; clicking the notification opens the folder with the file selected
+            if (page.lastFile !== "")
+                Quickshell.execDetached(["sh", "-c",
+                    "[ -s \"$1\" ] && notify-send -a Capture -i video-x-generic -t 6000 'Recording saved' \"Saved in <i>$1</i>\"", "sh", page.lastFile])
+        }
+    }
     function stopRecording() { Quickshell.execDetached(["pkill", "-INT", "-x", "wf-recorder"]) }
     Timer { interval: 1000; repeat: true; running: page.recording; onTriggered: page.seconds++ }
 
