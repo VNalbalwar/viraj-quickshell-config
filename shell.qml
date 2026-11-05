@@ -37,6 +37,16 @@ ShellRoot {
         }
     }
 
+    // ── colour-change ripple (one click-through overlay per screen) ─────────
+    Variants {
+        model: Quickshell.screens
+
+        ThemeRipple {
+            property var modelData
+            screen: modelData
+        }
+    }
+
     // ── Lockscreen (Stage 1: dismissible test overlay, one per screen) ────────
     Variants {
         model: Quickshell.screens
