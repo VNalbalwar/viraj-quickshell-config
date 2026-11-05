@@ -26,13 +26,49 @@ Item {
 
     // keep the last notification's content while the island is collapsing
     property var shownN: null
-    onNChanged: if (n !== null) shownN = n
+    onNChanged: if (n !== null) { shownN = n; dragX = 0; enterAnim.restart() }
 
     readonly property var content: n !== null ? n : shownN
 
+    // swipe sideways to dismiss; each new banner slides in from the right on a spring
+    property real dragX: 0
+    property real enter: 1
+    readonly property int waiting: NotificationState.queue.length
+
     visible: opacity > 0.01
-    opacity: (n !== null && active) ? 1 : 0
-    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+    opacity: ((n !== null && active) ? 1 : 0) * (0.3 + 0.7 * enter) * (1 - Math.min(1, Math.abs(dragX) / (width * 0.7)))
+    Behavior on opacity { enabled: !swipe.active; NumberAnimation { duration: Motion.fast } }
+    transform: Translate { x: banner.dragX + (1 - banner.enter) * 44 }
+
+    NumberAnimation { id: enterAnim; target: banner; property: "enter"; from: 0; to: 1; duration: Motion.slide; easing.type: Motion.pop; easing.overshoot: 1.2 }
+
+    NumberAnimation { id: springBack; target: banner; property: "dragX"; to: 0; duration: Motion.slide; easing.type: Motion.pop; easing.overshoot: Motion.overshoot }
+    NumberAnimation {
+        id: flyOff
+        target: banner
+        property: "dragX"
+        duration: Motion.base
+        easing.type: Easing.InCubic
+        onFinished: NotificationState.closeBanner(true)
+    }
+
+    DragHandler {
+        id: swipe
+        target: null
+        xAxis.enabled: true
+        yAxis.enabled: false
+        onTranslationChanged: banner.dragX = translation.x
+        onActiveChanged: {
+            NotificationState.hovering = active              // hold the countdown while you drag
+            if (active) { springBack.stop(); return }
+            if (Math.abs(banner.dragX) > banner.width * 0.22) {
+                flyOff.to = banner.dragX > 0 ? banner.width : -banner.width
+                flyOff.start()
+            } else {
+                springBack.start()
+            }
+        }
+    }
 
     // a verified icon source, or "" (-> the bell glyph) - never somebody else's fallback logo
     function iconSource(notification) { return Icons.forNotification(notification) }
@@ -91,7 +127,7 @@ Item {
 
     // text: small label (app / site · chat), then the sender or subject, then the message
     Column {
-        anchors { left: iconBox.right; leftMargin: 16; right: closeButton.left; rightMargin: 12; top: iconBox.top; topMargin: -2 }
+        anchors { left: iconBox.right; leftMargin: 16; right: closeButton.left; rightMargin: 46; top: iconBox.top; topMargin: -2 }
         spacing: 3
 
         Text {
@@ -124,6 +160,26 @@ Item {
             lineHeight: 1.1
             font.pixelSize: 13
             onLinkActivated: link => Qt.openUrlExternally(link)
+        }
+    }
+
+    // more waiting behind this one
+    Rectangle {
+        anchors { right: closeButton.left; rightMargin: 8; verticalCenter: closeButton.verticalCenter }
+        height: 22
+        width: moreLabel.implicitWidth + 16
+        radius: 11
+        color: Colors.alpha(Colors.colBlue, 0.28)
+        opacity: banner.waiting > 0 ? 1 : 0
+        scale: banner.waiting > 0 ? 1 : 0.6
+        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
+        Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
+        Text {
+            id: moreLabel
+            anchors.centerIn: parent
+            text: "+" + banner.waiting
+            color: Colors.fg
+            font { pixelSize: 11; weight: Font.DemiBold }
         }
     }
 
