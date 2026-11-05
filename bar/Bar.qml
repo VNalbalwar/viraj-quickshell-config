@@ -400,9 +400,9 @@ PanelWindow {
             Behavior on opacity { NumberAnimation { duration: 150 } }
         }
 
-        // plugged in: a bolt next to the clock for as long as the charger is connected, gone when it isn't
+        // plugged in: a bolt beside the clock for as long as the charger is connected, gone when it isn't
         Text {
-            anchors { verticalCenter: clockText.verticalCenter; right: clockText.left; rightMargin: 6 }
+            anchors { verticalCenter: clockText.verticalCenter; left: clockText.right; leftMargin: 6 }   // right of the clock: the left side belongs to the workspace dots
             text: "󱐋"
             color: Colors.colBrightGreen
             font { family: "JetBrainsMono Nerd Font"; pixelSize: 16 }
