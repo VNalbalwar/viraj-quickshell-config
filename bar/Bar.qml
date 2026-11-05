@@ -858,8 +858,10 @@ PanelWindow {
             // system glance: the numbers you reach for most, only polled while the notch is open
             Row {
                 id: glance
-                anchors { left: parent.left; leftMargin: 16; bottom: parent.bottom; bottomMargin: 9 }
-                spacing: 12
+                // the "N playing" chip sits under the artwork when several things play: start after it, not on top of it
+                anchors { left: parent.left; leftMargin: MediaState.count > 1 ? 134 : 32; bottom: parent.bottom; bottomMargin: 9 }
+                Behavior on anchors.leftMargin { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+                spacing: 14
                 visible: !wallpaperMode
                 Component.onCompleted: SystemStats.watching = Qt.binding(function() { return island.expanded && glance.visible && !panelMode })
                 Repeater {
@@ -867,8 +869,7 @@ PanelWindow {
                         { k: "CPU", v: SystemStats.cpu + "%" },
                         { k: "RAM", v: SystemStats.ram + "%" },
                         { k: "TEMP", v: SystemStats.temp + "°" },
-                        { k: "BAT", v: Math.round(OsdState.battery) + "%" },
-                        { k: "POWER", v: SystemStats.watts.toFixed(1) + " W" }
+                        { k: "BAT", v: Math.round(OsdState.battery) + "%" }
                     ]
                     delegate: Row {
                         spacing: 4

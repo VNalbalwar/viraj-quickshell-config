@@ -12,7 +12,6 @@ Singleton {
     property int cpu: 0              // %
     property int ram: 0              // %
     property int temp: 0             // °C, CPU package
-    property real watts: 0           // battery power flow
 
     property var _last: null         // previous /proc/stat totals, for the CPU delta
 
@@ -21,12 +20,11 @@ Singleton {
         command: ["sh", "-c",
             "head -1 /proc/stat; " +
             "awk '/MemTotal/{t=$2}/MemAvailable/{a=$2}END{print t, a}' /proc/meminfo; " +
-            "for h in /sys/class/hwmon/hwmon*; do [ \"$(cat $h/name 2>/dev/null)\" = coretemp ] && cat $h/temp1_input && break; done; " +
-            "cat /sys/class/power_supply/BAT1/power_now 2>/dev/null || echo 0"]
+            "for h in /sys/class/hwmon/hwmon*; do [ \"$(cat $h/name 2>/dev/null)\" = coretemp ] && cat $h/temp1_input && break; done"]
         stdout: StdioCollector {
             onStreamFinished: {
                 var l = text.trim().split("\n")
-                if (l.length < 4) return
+                if (l.length < 3) return
                 var f = l[0].trim().split(/\s+/).slice(1).map(Number)
                 var idle = f[3] + (f[4] || 0)
                 var total = f.reduce(function(a, b) { return a + b }, 0)
@@ -38,7 +36,6 @@ Singleton {
                 var m = l[1].trim().split(/\s+/).map(Number)
                 root.ram = Math.round(100 * (1 - m[1] / m[0]))
                 root.temp = Math.round(Number(l[2]) / 1000)
-                root.watts = Math.round(Number(l[3]) / 1e5) / 10
             }
         }
     }

@@ -8,7 +8,10 @@ import QtQuick
 Singleton {
     id: root
 
+    // `ready` = we have a recent reading. When the network is down the chip hides itself after two failed
+    // tries, and we keep retrying every minute, so it comes back by itself once you're online.
     property bool ready: false
+    property double lastOk: 0
     property real temp: 0
     property int code: 0
     property bool day: true
@@ -33,6 +36,12 @@ Singleton {
 
     function refresh() { fetch.running = false; fetch.running = true }
 
+    property int failures: 0
+    function checkStale() {                    // two misses in a row (about two minutes): hide it, keep retrying
+        root.failures++
+        if (root.failures >= 2) root.ready = false
+    }
+
     // location (cached for a day) -> current conditions
     Process {
         id: fetch
@@ -48,18 +57,27 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 var nl = text.indexOf("\n")
-                if (nl < 0) return
+                if (nl < 0) { root.checkStale(); return }
                 try {
                     var cur = JSON.parse(text.slice(nl + 1)).current
                     root.place = text.slice(0, nl)
                     root.temp = cur.temperature_2m
                     root.code = cur.weather_code
                     root.day = cur.is_day === 1
+                    root.lastOk = Date.now()
+                    root.failures = 0
                     root.ready = true
-                } catch (e) { console.log("weather:", e) }
+                } catch (e) { root.checkStale() }
             }
         }
     }
 
-    Timer { interval: 1800000; repeat: true; running: true; triggeredOnStart: true; onTriggered: root.refresh() }
+    // every 15 minutes normally; every minute while we have no reading (offline), so it reappears quickly
+    Timer {
+        interval: (root.ready && root.failures === 0) ? 900000 : 60000
+        repeat: true
+        running: true
+        triggeredOnStart: true
+        onTriggered: root.refresh()
+    }
 }
