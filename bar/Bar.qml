@@ -867,6 +867,7 @@ PanelWindow {
                         { k: "CPU", v: SystemStats.cpu + "%" },
                         { k: "RAM", v: SystemStats.ram + "%" },
                         { k: "TEMP", v: SystemStats.temp + "°" },
+                        { k: "BAT", v: Math.round(OsdState.battery) + "%" },
                         { k: "POWER", v: SystemStats.watts.toFixed(1) + " W" }
                     ]
                     delegate: Row {
@@ -875,6 +876,16 @@ PanelWindow {
                         Text { id: val; text: modelData.v; color: Colors.alpha(Colors.fg, 0.85); font { pixelSize: 11; weight: Font.DemiBold } }
                     }
                 }
+            }
+
+            // weather, top right
+            Row {
+                anchors { right: parent.right; rightMargin: 18; top: parent.top; topMargin: 11 }
+                spacing: 5
+                opacity: WeatherState.ready ? 0.9 : 0
+                Behavior on opacity { NumberAnimation { duration: 300 } }
+                Text { text: WeatherState.glyph; color: Colors.colBlue; font { family: "JetBrainsMono Nerd Font"; pixelSize: 13 } }
+                Text { text: Math.round(WeatherState.temp) + "°"; color: Colors.fg; font { pixelSize: 11; weight: Font.DemiBold } }
             }
 
             // which player is shown; tap to cycle when several are running
