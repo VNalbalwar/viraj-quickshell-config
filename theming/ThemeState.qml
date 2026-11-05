@@ -114,7 +114,7 @@ Singleton {
             root.selectedIndex = idx >= 0 ? idx : 0
         }
         var missing = false
-        for (var m = 0; m < items.length; m++) if (!items[m].ready) { missing = true; break }
+        for (var m = 0; m < items.length; m++) if (!items[m].ready && !items[m].bad) { missing = true; break }
         if (missing && !thumbProcess.running) { root.buildingThumbs = true; thumbProcess.running = true }
     }
 

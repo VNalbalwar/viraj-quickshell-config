@@ -96,6 +96,8 @@ def make_thumb(path):
     out = thumb_path(path)
     if os.path.exists(out):
         return out
+    if os.path.exists(out + ".bad"):
+        return ""
     os.makedirs(THUMBS, exist_ok=True)
     tmp = out + ".part"
     if path.lower().endswith((".gif", ".bmp")):
@@ -110,6 +112,7 @@ def make_thumb(path):
     if os.path.exists(tmp):
         os.replace(tmp, out)
         return out
+    open(out + ".bad", "w").close()                 # unreadable image: don't try again every time
     return ""
 
 
@@ -117,12 +120,12 @@ def cmd_list(dirs):
     items = []
     for p in scan(dirs):
         t = thumb_path(p)
-        items.append({"path": p, "thumb": t, "ready": os.path.exists(t)})
+        items.append({"path": p, "thumb": t, "ready": os.path.exists(t), "bad": os.path.exists(t + ".bad")})
     print(json.dumps(items))
 
 
 def cmd_thumbs(dirs):
-    paths = [p for p in scan(dirs) if not os.path.exists(thumb_path(p))]
+    paths = [p for p in scan(dirs) if not os.path.exists(thumb_path(p)) and not os.path.exists(thumb_path(p) + ".bad")]
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, (os.cpu_count() or 4) // 2)) as ex:
         list(ex.map(make_thumb, paths))
     print(len(paths))
