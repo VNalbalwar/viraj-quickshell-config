@@ -33,10 +33,20 @@ Singleton {
 
     function isBrowser(app) { return /chrome|chromium|brave|vivaldi|edge|opera|firefox/i.test(app || "") }
 
-    function clip(s, n) { return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s }
+    function clip(s, n) { return s.length > n ? s.slice(0, n - 1).replace(/\s+$/, "") + "…" : s }
 
     // -> { label, title, body, plain, icon }
+    // Never throws: if anything in the cleanup goes wrong the notification is shown as the app sent it, rather than blank.
     function format(n) {
+        try {
+            return root.cleaned(n)
+        } catch (e) {
+            console.log("notification format:", e)
+            return { label: n.appName || "", title: n.summary || "", body: n.body || "", plain: false, icon: "" }
+        }
+    }
+
+    function cleaned(n) {
         var summary = n.summary || ""
         var body = n.body || ""
         var out = { label: n.appName || "", title: summary, body: body, plain: false, icon: "" }
