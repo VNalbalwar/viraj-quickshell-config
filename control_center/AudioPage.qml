@@ -82,8 +82,9 @@ Page {
         delegate: ListRow {
             required property int nodeId
             required property int index
-            readonly property var modelData: page.nodeFor(nodeId)
-            visible: modelData !== null
+            // (the node can vanish a moment before the model catches up: use an inert stand-in meanwhile)
+            readonly property var modelData: page.nodeFor(nodeId) || ({ isStream: false, isSink: false, audio: null, description: "", nickname: "", name: "", properties: ({}) })
+            visible: page.nodeFor(nodeId) !== null
 
             width: list.width
             icon: modelData.isStream ? "󰝚" : page.iconFor(modelData)

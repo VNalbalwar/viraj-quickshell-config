@@ -855,6 +855,28 @@ PanelWindow {
                 }
             }
 
+            // system glance: the numbers you reach for most, only polled while the notch is open
+            Row {
+                id: glance
+                anchors { left: parent.left; leftMargin: 16; bottom: parent.bottom; bottomMargin: 9 }
+                spacing: 12
+                visible: !wallpaperMode
+                Component.onCompleted: SystemStats.watching = Qt.binding(function() { return island.expanded && glance.visible && !panelMode })
+                Repeater {
+                    model: [
+                        { k: "CPU", v: SystemStats.cpu + "%" },
+                        { k: "RAM", v: SystemStats.ram + "%" },
+                        { k: "TEMP", v: SystemStats.temp + "°" },
+                        { k: "POWER", v: SystemStats.watts.toFixed(1) + " W" }
+                    ]
+                    delegate: Row {
+                        spacing: 4
+                        Text { text: modelData.k; color: Colors.grey2; font { pixelSize: 9; weight: Font.Medium; letterSpacing: 0.5 } anchors.baseline: val.baseline }
+                        Text { id: val; text: modelData.v; color: Colors.alpha(Colors.fg, 0.85); font { pixelSize: 11; weight: Font.DemiBold } }
+                    }
+                }
+            }
+
             // which player is shown; tap to cycle when several are running
             Text {
                 id: playerLabel
