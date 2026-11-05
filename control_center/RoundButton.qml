@@ -14,8 +14,8 @@ Rectangle {
     radius: 17
     color: btnHover.hovered ? Colors.alpha(Colors.colFg, 0.13) : Colors.alpha(Colors.colFg, 0.05)
     scale: btnMouse.pressed ? 0.88 : (btnHover.hovered ? 1.08 : 1.0)
-    Behavior on color { ColorAnimation { duration: 120 } }
-    Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+    Behavior on color { ColorAnimation { duration: Motion.quick } }
+    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
     NumberAnimation {
         id: spin
@@ -24,7 +24,7 @@ Rectangle {
         from: 0
         to: 360
         duration: 520
-        easing.type: Easing.OutCubic
+        easing.type: Motion.settle
     }
 
     Text {

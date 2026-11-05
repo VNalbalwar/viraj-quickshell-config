@@ -12,7 +12,7 @@ Rectangle {
     height: 28
     radius: 14
     color: on ? Colors.alpha(Colors.colBlue, 0.55) : Colors.alpha(Colors.colFg, 0.12)
-    Behavior on color { ColorAnimation { duration: 160 } }
+    Behavior on color { ColorAnimation { duration: Motion.fast } }
 
     Rectangle {
         width: pillMouse.pressed ? 26 : 22
@@ -21,8 +21,8 @@ Rectangle {
         y: 3
         x: pill.on ? parent.width - width - 3 : 3
         color: Colors.fg
-        Behavior on x { NumberAnimation { duration: 240; easing.type: Easing.OutBack; easing.overshoot: 1.6 } }
-        Behavior on width { NumberAnimation { duration: 120 } }
+        Behavior on x { NumberAnimation { duration: Motion.base; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
+        Behavior on width { NumberAnimation { duration: Motion.quick } }
     }
 
     MouseArea {

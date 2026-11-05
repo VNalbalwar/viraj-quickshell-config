@@ -17,7 +17,7 @@ ClippingRectangle {
     height: Ui.gridHeight
     radius: 24
     color: Colors.alpha(Colors.colFg, sliderHover.hovered ? 0.085 : 0.055)
-    Behavior on color { ColorAnimation { duration: 120 } }
+    Behavior on color { ColorAnimation { duration: Motion.quick } }
 
     HoverHandler { id: sliderHover }
 
@@ -25,8 +25,8 @@ ClippingRectangle {
         anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
         height: parent.height * Math.max(0, Math.min(100, slider.value)) / 100
         color: Colors.alpha(Colors.colBlue, slider.dim ? 0.16 : 0.42)
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on height { enabled: !dragArea.pressed; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: Motion.quick } }
+        Behavior on height { enabled: !dragArea.pressed; NumberAnimation { duration: Motion.fast; easing.type: Motion.settle } }
     }
 
     Text {
@@ -42,7 +42,7 @@ ClippingRectangle {
         text: slider.icon
         color: Colors.fg
         scale: iconZone.pressed ? 0.8 : 1.0
-        Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2.5 } }
+        Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
         font { family: Ui.iconFont; pixelSize: 24 }
     }
 

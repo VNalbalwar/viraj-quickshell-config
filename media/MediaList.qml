@@ -20,7 +20,7 @@ Item {
 
     visible: opacity > 0.01
     opacity: active ? 1 : 0
-    Behavior on opacity { NumberAnimation { duration: 180 } }
+    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
     // header
     Row {
@@ -48,8 +48,8 @@ Item {
         radius: 16
         color: closeMouse.containsMouse ? Colors.alpha(Colors.colFg, 0.16) : Colors.alpha(Colors.colFg, 0.07)
         scale: closeMouse.pressed ? 0.88 : 1.0
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+        Behavior on color { ColorAnimation { duration: Motion.quick } }
+        Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
         Text {
             anchors.centerIn: parent
@@ -89,8 +89,8 @@ Item {
                 ? Colors.alpha(Colors.colBlue, rowHover.hovered ? 0.30 : 0.22)
                 : Colors.alpha(Colors.colFg, rowHover.hovered ? 0.10 : 0.055)
             scale: rowMouse.pressed ? 0.985 : 1.0
-            Behavior on color { ColorAnimation { duration: 140 } }
-            Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+            Behavior on color { ColorAnimation { duration: Motion.fast } }
+            Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
             HoverHandler { id: rowHover }
 
@@ -167,8 +167,8 @@ Item {
                         ? Colors.alpha("#ff6b6b", muteMouse.containsMouse ? 0.45 : 0.30)
                         : (muteMouse.containsMouse && usable ? Colors.alpha(Colors.colFg, 0.20) : Colors.alpha(Colors.colFg, 0.10))
                     scale: muteMouse.pressed && usable ? 0.86 : 1.0
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+                    Behavior on color { ColorAnimation { duration: Motion.quick } }
+                    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
                     Text {
                         anchors.centerIn: parent
@@ -194,8 +194,8 @@ Item {
                     radius: 20
                     color: actionMouse.containsMouse ? Colors.alpha(Colors.colBlue, 0.55) : Colors.alpha(Colors.colBlue, 0.34)
                     scale: actionMouse.pressed ? 0.86 : (actionMouse.containsMouse ? 1.06 : 1.0)
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+                    Behavior on color { ColorAnimation { duration: Motion.quick } }
+                    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
                     Text {
                         anchors.centerIn: parent

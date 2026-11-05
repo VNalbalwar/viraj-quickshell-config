@@ -363,23 +363,23 @@ PanelWindow {
         color: "#000000"
 
         Behavior on opacity {
-            NumberAnimation { duration: 260; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: Motion.base; easing.type: Motion.settle }
         }
         Behavior on scale {
-            NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: Motion.slide; easing.type: Motion.settle }
         }
         Behavior on implicitWidth {
             NumberAnimation {
-                duration: 500
+                duration: Motion.island
                 easing.type: Easing.Bezier
-                easing.bezierCurve: [0.38, 1.21, 0.22, 1, 1, 1]
+                easing.bezierCurve: Motion.islandCurve
             }
         }
         Behavior on implicitHeight {
             NumberAnimation {
-                duration: 500
+                duration: Motion.island
                 easing.type: Easing.Bezier
-                easing.bezierCurve: [0.38, 1.21, 0.22, 1, 1, 1]
+                easing.bezierCurve: Motion.islandCurve
             }
         }
 
@@ -397,7 +397,7 @@ PanelWindow {
             text: Qt.formatDateTime(clock.date, "hh:mm")
             color: Colors.fg
             font { pixelSize: 16; weight: 600 }
-            Behavior on opacity { NumberAnimation { duration: 150 } }
+            Behavior on opacity { NumberAnimation { duration: Motion.fast } }
         }
 
         // plugged in: a bolt beside the clock for as long as the charger is connected, gone when it isn't
@@ -408,8 +408,8 @@ PanelWindow {
             font { family: "JetBrainsMono Nerd Font"; pixelSize: 16 }
             opacity: (OsdState.pluggedIn && clockText.opacity > 0.5) ? 1 : 0
             scale: OsdState.pluggedIn ? 1 : 0.4
-            Behavior on opacity { NumberAnimation { duration: 220 } }
-            Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+            Behavior on opacity { NumberAnimation { duration: Motion.base } }
+            Behavior on scale { NumberAnimation { duration: Motion.slide; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
             SequentialAnimation on y {
                 running: OsdState.pluggedIn
                 loops: Animation.Infinite
@@ -510,7 +510,7 @@ PanelWindow {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: 160
+                    duration: Motion.fast
                 }
             }
 
@@ -551,13 +551,13 @@ PanelWindow {
                         scale: selected ? 1.045 : 1.0
 
                         Behavior on color {
-                            ColorAnimation { duration: 120 }
+                            ColorAnimation { duration: Motion.quick }
                         }
 
                         Behavior on scale {
                             NumberAnimation {
-                                duration: 170
-                                easing.type: Easing.OutCubic
+                                duration: Motion.fast
+                                easing.type: Motion.settle
                             }
                         }
 
@@ -615,7 +615,7 @@ PanelWindow {
             // stayed clickable underneath whatever panel was open and swallowed clicks meant for it.
             enabled: opacity > 0.5
 
-            Behavior on opacity { NumberAnimation { duration: 220 } }
+            Behavior on opacity { NumberAnimation { duration: Motion.base } }
 
             // auto-follow: whichever player starts playing becomes the active one
             Repeater {
@@ -717,8 +717,8 @@ PanelWindow {
                 visible: MediaState.count > 1
                 color: chipMouse.containsMouse ? Colors.alpha(Colors.colBlue, 0.5) : Colors.alpha(Colors.colBlue, 0.3)
                 scale: chipMouse.pressed ? 0.94 : 1.0
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+                Behavior on color { ColorAnimation { duration: Motion.quick } }
+                Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
                 Row {
                     anchors.centerIn: parent
@@ -781,8 +781,8 @@ PanelWindow {
                     width: 34; height: 34; radius: 17
                     color: previousHover.hovered ? Colors.alpha(Colors.colFg, 0.13) : Colors.alpha(Colors.colFg, 0.05)
                     scale: previousHover.hovered ? 1.08 : 1.0
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: Motion.quick } }
+                    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.settle } }
                     Text { anchors.centerIn: parent; text: "󰒮"; color: Colors.fg; font { pixelSize: 18; weight: Font.Medium } }
                     HoverHandler { id: previousHover }
                     MouseArea { anchors.fill: parent; onClicked: if (mediaPlayer && mediaPlayer.canGoPrevious) mediaPlayer.previous() }
@@ -792,8 +792,8 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     color: playHover.hovered ? Colors.alpha(Colors.colBlue, 0.32) : Colors.alpha(Colors.colBlue, 0.20)
                     scale: playHover.hovered ? 1.08 : 1.0
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: Motion.quick } }
+                    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.settle } }
                     Text {
                         anchors.centerIn: parent
                         text: mediaPlaying ? "󰏤" : "󰐊"
@@ -807,8 +807,8 @@ PanelWindow {
                     width: 34; height: 34; radius: 17
                     color: nextHover.hovered ? Colors.alpha(Colors.colFg, 0.13) : Colors.alpha(Colors.colFg, 0.05)
                     scale: nextHover.hovered ? 1.08 : 1.0
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                    Behavior on color { ColorAnimation { duration: Motion.quick } }
+                    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.settle } }
                     Text { anchors.centerIn: parent; text: "󰒭"; color: Colors.fg; font { pixelSize: 18; weight: Font.Medium } }
                     HoverHandler { id: nextHover }
                     MouseArea { anchors.fill: parent; onClicked: if (mediaPlayer && mediaPlayer.canGoNext) mediaPlayer.next() }
@@ -860,7 +860,7 @@ PanelWindow {
                 id: glance
                 // the "N playing" chip sits under the artwork when several things play: start after it, not on top of it
                 anchors { left: parent.left; leftMargin: MediaState.count > 1 ? 140 : 36; bottom: parent.bottom; bottomMargin: 14 }
-                Behavior on anchors.leftMargin { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
+                Behavior on anchors.leftMargin { NumberAnimation { duration: Motion.base; easing.type: Motion.settle } }
                 spacing: 20
                 visible: !wallpaperMode
                 Component.onCompleted: SystemStats.watching = Qt.binding(function() { return island.expanded && glance.visible && !panelMode })
@@ -884,7 +884,7 @@ PanelWindow {
                 anchors { right: parent.right; rightMargin: 18; top: parent.top; topMargin: 11 }
                 spacing: 5
                 opacity: (WeatherState.ready && WeatherState.online) ? 0.9 : 0
-                Behavior on opacity { NumberAnimation { duration: 300 } }
+                Behavior on opacity { NumberAnimation { duration: Motion.slide } }
                 Text { text: WeatherState.glyph; color: Colors.colBlue; font { family: "JetBrainsMono Nerd Font"; pixelSize: 13 } }
                 Text { text: Math.round(WeatherState.temp) + "°"; color: Colors.fg; font { pixelSize: 11; weight: Font.DemiBold } }
             }
@@ -897,7 +897,7 @@ PanelWindow {
                 color: Colors.grey2
                 opacity: labelHover.hovered ? 0.9 : 0.45
                 font { pixelSize: 9 }
-                Behavior on opacity { NumberAnimation { duration: 120 } }
+                Behavior on opacity { NumberAnimation { duration: Motion.quick } }
 
                 HoverHandler { id: labelHover }
                 MouseArea {
@@ -947,7 +947,7 @@ PanelWindow {
             }
 
             Behavior on opacity {
-                NumberAnimation { duration: 180 }
+                NumberAnimation { duration: Motion.fast }
             }
 
             onVisibleChanged: {
@@ -1092,7 +1092,7 @@ PanelWindow {
                     color: index === launcherView.selectedIndex ? Colors.alpha(Colors.colBlue, 0.38) : Colors.alpha(Colors.colFg, 0.06)
 
                     Behavior on color {
-                        ColorAnimation { duration: 150 }
+                        ColorAnimation { duration: Motion.fast }
                     }
 
                     HoverHandler { id: appHover }
@@ -1101,8 +1101,8 @@ PanelWindow {
 
                     Behavior on scale {
                         NumberAnimation {
-                            duration: 180
-                            easing.type: Easing.OutCubic
+                            duration: Motion.fast
+                            easing.type: Motion.settle
                         }
                     }
 

@@ -134,7 +134,7 @@ PanelWindow {
         Behavior on height {
             NumberAnimation {
                 duration: 500
-                easing.type: Easing.OutCubic
+                easing.type: Motion.settle
             }
         }
 
@@ -158,7 +158,7 @@ PanelWindow {
             Behavior on y {
                 NumberAnimation {
                     duration: 500
-                    easing.type: Easing.OutCubic
+                    easing.type: Motion.settle
                 }
             }
         } 
@@ -205,7 +205,7 @@ PanelWindow {
                     opacity: searchInput.activeFocus ? 0.55 : 0
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: 150
+                            duration: Motion.fast
                         }
                     }
                 }
@@ -325,7 +325,7 @@ PanelWindow {
                         color: appRow.sel ? root.accentFill : "transparent"
                         Behavior on color {
                             ColorAnimation {
-                                duration: 100
+                                duration: Motion.quick
                             }
                         }
 
@@ -346,7 +346,7 @@ PanelWindow {
                                 color: appRow.sel ? root.accentIcon : Qt.rgba(1, 1, 1, 0.08)
                                 Behavior on color {
                                     ColorAnimation {
-                                        duration: 100
+                                        duration: Motion.quick
                                     }
                                 }
 
@@ -372,7 +372,7 @@ PanelWindow {
                                     color: appRow.sel ? Colors.colBlue : Colors.colFg
                                     Behavior on color {
                                         ColorAnimation {
-                                            duration: 100
+                                            duration: Motion.quick
                                         }
                                     }
                                 }
@@ -393,7 +393,7 @@ PanelWindow {
                                     color: appRow.sel ? Colors.colFg : root.fgDim
                                     Behavior on color {
                                         ColorAnimation {
-                                            duration: 100
+                                            duration: Motion.quick
                                         }
                                     }
                                 }

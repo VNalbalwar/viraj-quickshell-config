@@ -25,8 +25,8 @@ ClippingRectangle {
     scale: rowMouse.pressed ? 0.975 : 1.0
     border.width: picked ? 2 : 0
     border.color: Colors.alpha(Colors.colFg, 0.45)
-    Behavior on color { ColorAnimation { duration: 140 } }
-    Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+    Behavior on color { ColorAnimation { duration: Motion.fast } }
+    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
     HoverHandler {
         id: rowHover

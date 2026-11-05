@@ -20,7 +20,7 @@ Item {
     visible: opacity > 0.01
     opacity: active ? 1 : 0
     focus: active
-    Behavior on opacity { NumberAnimation { duration: 180 } }
+    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
     onVisibleChanged: if (visible) forceActiveFocus()
 
     // jump straight to the selection when the panel opens (no long scroll), then it glides as you move
@@ -77,9 +77,9 @@ Item {
                 height: 30
                 radius: 15
                 color: on ? Colors.colBlue : (tabMouse.containsMouse ? Colors.alpha(Colors.colFg, 0.12) : Colors.alpha(Colors.colFg, 0.06))
-                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
                 scale: tabMouse.pressed ? 0.94 : 1
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+                Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
                 Text {
                     id: tabLabel
@@ -130,7 +130,7 @@ Item {
         opacity: panel.onWallpapers ? 1 : 0
         visible: opacity > 0.01
         enabled: panel.onWallpapers
-        Behavior on opacity { NumberAnimation { duration: 160 } }
+        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
         delegate: WallpaperCard {
             width: panel.cardW
@@ -166,7 +166,7 @@ Item {
         opacity: panel.onWallpapers ? 0 : 1
         visible: opacity > 0.01
         enabled: !panel.onWallpapers
-        Behavior on opacity { NumberAnimation { duration: 160 } }
+        Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
         delegate: ThemeCard {
             readonly property var card: ThemeState.themeCards[index]

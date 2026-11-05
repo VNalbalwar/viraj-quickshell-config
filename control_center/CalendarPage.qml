@@ -84,7 +84,7 @@ Page {
                         anchors.centerIn: parent
                         width: 27; height: 27; radius: 14
                         color: isToday ? Colors.colBlue : "transparent"
-                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on color { ColorAnimation { duration: Motion.base } }
                         Text {
                             anchors.centerIn: parent
                             text: inMonth ? day : ""

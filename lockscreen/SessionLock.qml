@@ -47,7 +47,7 @@ WlSessionLock {
 
             opacity: (surface.shown && !LockState.unlocking) ? 1 : 0
             Behavior on opacity {
-                NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: 300; easing.type: Motion.settle }
             }
         }
     }

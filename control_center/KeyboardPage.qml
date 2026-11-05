@@ -55,8 +55,8 @@ Page {
                     border.width: selected ? 3 : 1
                     border.color: selected ? Colors.fg : Colors.alpha(Colors.colFg, 0.18)
                     scale: zoneMouse.pressed ? 0.94 : 1.0
-                    Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutBack; easing.overshoot: 2 } }
-                    Behavior on color { ColorAnimation { duration: 160 } }
+                    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
 
                     Text {
                         anchors.centerIn: parent
@@ -91,7 +91,7 @@ Page {
                     radius: 15
                     color: "#" + modelData
                     scale: swatchMouse.pressed ? 0.85 : (swatchMouse.containsMouse ? 1.15 : 1.0)
-                    Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2.5 } }
+                    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
                     MouseArea {
                         id: swatchMouse
@@ -116,7 +116,7 @@ Page {
                     color: modelData
                     border { width: 2; color: Colors.alpha(Colors.colFg, 0.5) }
                     scale: themeMouse.pressed ? 0.85 : (themeMouse.containsMouse ? 1.15 : 1.0)
-                    Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2.5 } }
+                    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
                     MouseArea {
                         id: themeMouse
@@ -146,8 +146,8 @@ Page {
                         ? Colors.alpha(Colors.colBlue, 0.4)
                         : Colors.alpha(Colors.colFg, effMouse.containsMouse ? 0.10 : 0.055)
                     scale: effMouse.pressed ? 0.92 : 1.0
-                    Behavior on color { ColorAnimation { duration: 140 } }
-                    Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+                    Behavior on color { ColorAnimation { duration: Motion.fast } }
+                    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
                     Text {
                         anchors.centerIn: parent

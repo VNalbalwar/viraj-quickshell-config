@@ -36,7 +36,7 @@ Row {
     spacing: 4
     opacity: (shown && count > 1) ? 1 : 0
     visible: opacity > 0.01
-    Behavior on opacity { NumberAnimation { duration: 220 } }
+    Behavior on opacity { NumberAnimation { duration: Motion.base } }
 
     Repeater {
         model: dots.items
@@ -53,9 +53,9 @@ Row {
             anchors.verticalCenter: parent.verticalCenter
             color: alerted ? "#ff6b6b" : (current ? Colors.fg : Colors.alpha(Colors.colFg, edge ? 0.2 : 0.3))
 
-            Behavior on width { NumberAnimation { duration: 340; easing.type: Easing.OutBack; easing.overshoot: 1.6 } }
-            Behavior on height { NumberAnimation { duration: 240 } }
-            Behavior on color { ColorAnimation { duration: 200 } }
+            Behavior on width { NumberAnimation { duration: Motion.slide; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
+            Behavior on height { NumberAnimation { duration: Motion.base } }
+            Behavior on color { ColorAnimation { duration: Motion.base } }
         }
     }
 }

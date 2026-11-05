@@ -28,8 +28,8 @@ ClippingRectangle {
     border.width: picked ? 2 : 0
     border.color: Colors.alpha(Colors.colFg, 0.45)
 
-    Behavior on color { ColorAnimation { duration: 140 } }
-    Behavior on scale { NumberAnimation { duration: 190; easing.type: Easing.OutBack; easing.overshoot: 2.2 } }
+    Behavior on color { ColorAnimation { duration: Motion.fast } }
+    Behavior on scale { NumberAnimation { duration: 190; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
     HoverHandler {
         id: tileHover
@@ -40,8 +40,8 @@ ClippingRectangle {
 
     SequentialAnimation {
         id: iconPop
-        NumberAnimation { target: tileIcon; property: "scale"; to: 1.35; duration: 100; easing.type: Easing.OutCubic }
-        NumberAnimation { target: tileIcon; property: "scale"; to: 1.0; duration: 280; easing.type: Easing.OutBack; easing.overshoot: 3 }
+        NumberAnimation { target: tileIcon; property: "scale"; to: 1.35; duration: Motion.quick; easing.type: Motion.settle }
+        NumberAnimation { target: tileIcon; property: "scale"; to: 1.0; duration: Motion.slide; easing.type: Motion.pop; easing.overshoot: 3 }
     }
 
     Text {
@@ -98,8 +98,8 @@ ClippingRectangle {
         radius: 12
         color: chevHover.hovered ? Colors.alpha(Colors.colFg, 0.24) : Colors.alpha(Colors.colFg, 0.10)
         scale: chevMouse.pressed ? 0.85 : 1.0
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
+        Behavior on color { ColorAnimation { duration: Motion.quick } }
+        Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop } }
 
         Text {
             anchors.centerIn: parent

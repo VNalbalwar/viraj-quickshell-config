@@ -13,8 +13,8 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: 180
-            easing.type: Easing.OutCubic
+            duration: Motion.fast
+            easing.type: Motion.settle
         }
     }
 
@@ -96,8 +96,8 @@ Item {
 
                 Behavior on width {
                     NumberAnimation {
-                        duration: 180
-                        easing.type: Easing.OutCubic
+                        duration: Motion.fast
+                        easing.type: Motion.settle
                     }
                 }
             }

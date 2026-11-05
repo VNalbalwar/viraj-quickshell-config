@@ -19,7 +19,7 @@ Item {
     HoverHandler { id: hover }
 
     scale: hover.hovered ? 1.04 : 1.0
-    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.settle } }
 
     ClippingRectangle {
         anchors.fill: parent
@@ -97,7 +97,7 @@ Item {
         antialiasing: true
         border.width: card.cursor ? 3 : (hover.hovered ? 2 : 1)
         border.color: card.cursor ? Colors.colBlue : Colors.alpha(Colors.colFg, hover.hovered ? 0.55 : 0.14)
-        Behavior on border.width { NumberAnimation { duration: 120 } }
+        Behavior on border.width { NumberAnimation { duration: Motion.quick } }
     }
 
     MouseArea {

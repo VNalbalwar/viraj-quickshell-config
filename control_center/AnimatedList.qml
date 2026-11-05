@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 
 // ListView whose entries pop in (staggered on first open), shrink away when
 // removed, and glide to their new spot when the list reorders.
@@ -15,8 +16,8 @@ ListView {
 
     add: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 300; easing.type: Easing.OutCubic }
-            NumberAnimation { property: "scale"; from: 0.82; to: 1; duration: 380; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Motion.slide; easing.type: Motion.settle }
+            NumberAnimation { property: "scale"; from: 0.82; to: 1; duration: Motion.slide; easing.type: Motion.pop; easing.overshoot: Motion.overshoot }
         }
     }
 
@@ -24,21 +25,21 @@ ListView {
         SequentialAnimation {
             PauseAnimation { duration: ViewTransition.index * 45 }
             ParallelAnimation {
-                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 300; easing.type: Easing.OutCubic }
-                NumberAnimation { property: "y"; from: ViewTransition.destination.y + 14; to: ViewTransition.destination.y; duration: 340; easing.type: Easing.OutCubic }
+                NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Motion.slide; easing.type: Motion.settle }
+                NumberAnimation { property: "y"; from: ViewTransition.destination.y + 14; to: ViewTransition.destination.y; duration: Motion.slide; easing.type: Motion.settle }
             }
         }
     }
 
     remove: Transition {
         ParallelAnimation {
-            NumberAnimation { property: "opacity"; to: 0; duration: 200; easing.type: Easing.InCubic }
-            NumberAnimation { property: "scale"; to: 0.85; duration: 200; easing.type: Easing.InCubic }
+            NumberAnimation { property: "opacity"; to: 0; duration: Motion.base; easing.type: Easing.InCubic }
+            NumberAnimation { property: "scale"; to: 0.85; duration: Motion.base; easing.type: Easing.InCubic }
         }
     }
 
     displaced: Transition {
-        NumberAnimation { properties: "x,y"; duration: 300; easing.type: Easing.OutCubic }
+        NumberAnimation { properties: "x,y"; duration: Motion.slide; easing.type: Motion.settle }
         NumberAnimation { property: "opacity"; to: 1; duration: 1 }
         NumberAnimation { property: "scale"; to: 1; duration: 1 }
     }

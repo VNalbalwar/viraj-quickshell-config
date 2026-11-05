@@ -17,7 +17,7 @@ Item {
 
     visible: opacity > 0.01
     opacity: active ? 1 : 0
-    Behavior on opacity { NumberAnimation { duration: 160 } }
+    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
     Row {
         anchors { left: parent.left; leftMargin: 24; verticalCenter: parent.verticalCenter }
@@ -39,9 +39,9 @@ Item {
                     : (chipMouse.containsMouse ? Colors.alpha(Colors.colFg, 0.16) : Colors.alpha(Colors.colFg, 0.07))
                 scale: chipMouse.pressed ? 0.9 : 1.0
 
-                Behavior on width { NumberAnimation { duration: 380; easing.type: Easing.OutBack; easing.overshoot: 1.5 } }
-                Behavior on color { ColorAnimation { duration: 160 } }
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+                Behavior on width { NumberAnimation { duration: Motion.slide; easing.type: Motion.pop; easing.overshoot: 1.5 } }
+                Behavior on color { ColorAnimation { duration: Motion.fast } }
+                Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
                 Text {
                     anchors.centerIn: parent

@@ -20,7 +20,7 @@ Item {
 
     opacity: on ? 1 : 0
     visible: opacity > 0.01
-    Behavior on opacity { NumberAnimation { duration: 220 } }
+    Behavior on opacity { NumberAnimation { duration: Motion.base } }
 
     // ── left slot ────────────────────────────────────────────────────────────
     Item {
@@ -120,9 +120,9 @@ Item {
                 SequentialAnimation on height {
                     running: activity.kind === "media" && activity.playing && activity.on
                     loops: Animation.Infinite
-                    NumberAnimation { to: 18 - index * 2; duration: 260 + index * 90; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 4 + index; duration: 300 + index * 70; easing.type: Easing.InOutSine }
-                    NumberAnimation { to: 12 + (index % 2) * 5; duration: 220 + index * 60; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 18 - index * 2; duration: Motion.base + index * 90; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 4 + index; duration: Motion.slide + index * 70; easing.type: Easing.InOutSine }
+                    NumberAnimation { to: 12 + (index % 2) * 5; duration: Motion.base + index * 60; easing.type: Easing.InOutSine }
                 }
             }
         }
@@ -171,8 +171,8 @@ Item {
         radius: 13
         color: stopMouse.containsMouse ? Colors.alpha("#ff4d4d", 0.35) : Colors.alpha("#ff4d4d", 0.2)
         scale: stopMouse.pressed ? 0.88 : 1.0
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+        Behavior on color { ColorAnimation { duration: Motion.quick } }
+        Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop } }
 
         Rectangle {
             anchors.centerIn: parent

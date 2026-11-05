@@ -17,7 +17,7 @@ Item {
     HoverHandler { id: hover }
 
     scale: hover.hovered ? 1.04 : 1.0
-    Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.settle } }
 
     ClippingRectangle {
         anchors.fill: parent
@@ -32,7 +32,7 @@ Item {
             asynchronous: true
             cache: true
             opacity: status === Image.Ready ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 200 } }
+            Behavior on opacity { NumberAnimation { duration: Motion.base } }
         }
     }
 
@@ -54,7 +54,7 @@ Item {
         antialiasing: true
         border.width: card.selected ? 3 : (hover.hovered ? 2 : 0)
         border.color: card.selected ? Colors.colBlue : Colors.alpha(Colors.colFg, 0.55)
-        Behavior on border.width { NumberAnimation { duration: 120 } }
+        Behavior on border.width { NumberAnimation { duration: Motion.quick } }
     }
 
     MouseArea {

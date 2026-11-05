@@ -70,23 +70,23 @@ Item {
     ParallelAnimation {
         id: intro
         SequentialAnimation {
-            NumberAnimation { target: content; property: "tClock"; to: 1; duration: 750; easing.type: Easing.OutCubic }
+            NumberAnimation { target: content; property: "tClock"; to: 1; duration: 750; easing.type: Motion.settle }
         }
         SequentialAnimation {
             PauseAnimation { duration: 110 }
-            NumberAnimation { target: content; property: "tDate"; to: 1; duration: 650; easing.type: Easing.OutCubic }
+            NumberAnimation { target: content; property: "tDate"; to: 1; duration: 650; easing.type: Motion.settle }
         }
         SequentialAnimation {
             PauseAnimation { duration: 230 }
-            NumberAnimation { target: content; property: "tAvatar"; to: 1; duration: 700; easing.type: Easing.OutBack; easing.overshoot: 1.6 }
+            NumberAnimation { target: content; property: "tAvatar"; to: 1; duration: 700; easing.type: Motion.pop; easing.overshoot: Motion.overshoot }
         }
         SequentialAnimation {
             PauseAnimation { duration: 360 }
-            NumberAnimation { target: content; property: "tField"; to: 1; duration: 800; easing.type: Easing.OutBack; easing.overshoot: 1.25 }
+            NumberAnimation { target: content; property: "tField"; to: 1; duration: 800; easing.type: Motion.pop; easing.overshoot: 1.25 }
         }
         SequentialAnimation {
             PauseAnimation { duration: 600 }
-            NumberAnimation { target: content; property: "tFoot"; to: 1; duration: 600; easing.type: Easing.OutCubic }
+            NumberAnimation { target: content; property: "tFoot"; to: 1; duration: 600; easing.type: Motion.settle }
         }
     }
 
@@ -160,7 +160,7 @@ Item {
         spacing: 0
         scale: content.ok ? 1.05 : 1
         opacity: content.ok ? 0.0 : 1
-        Behavior on scale { NumberAnimation { duration: 380; easing.type: Easing.OutCubic } }
+        Behavior on scale { NumberAnimation { duration: 380; easing.type: Motion.settle } }
         Behavior on opacity { NumberAnimation { duration: 320 } }
 
         // clock
@@ -307,7 +307,7 @@ Item {
                     id: flash
                     running: false
                     NumberAnimation { to: 0.35; duration: 80 }
-                    NumberAnimation { to: 0; duration: 420; easing.type: Easing.OutCubic }
+                    NumberAnimation { to: 0; duration: 420; easing.type: Motion.settle }
                 }
             }
 
@@ -341,7 +341,7 @@ Item {
                         color: Colors.fg
                         scale: 0
                         Component.onCompleted: scale = 1
-                        Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutBack; easing.overshoot: 3 } }
+                        Behavior on scale { NumberAnimation { duration: 220; easing.type: Motion.pop; easing.overshoot: 3 } }
                     }
                 }
             }

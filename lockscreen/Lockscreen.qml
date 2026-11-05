@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import "../theme"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Lockscreen (STAGE 1) — a dismissible full-screen test surface.
@@ -74,7 +75,7 @@ PanelWindow {
 
         opacity: LockState.demoActive ? 1 : 0
         Behavior on opacity {
-            NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: 320; easing.type: Motion.settle }
         }
     }
 }

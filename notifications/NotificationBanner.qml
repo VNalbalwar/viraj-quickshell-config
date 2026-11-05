@@ -32,7 +32,7 @@ Item {
 
     visible: opacity > 0.01
     opacity: (n !== null && active) ? 1 : 0
-    Behavior on opacity { NumberAnimation { duration: 180 } }
+    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
     // a verified icon source, or "" (-> the bell glyph) - never somebody else's fallback logo
     function iconSource(notification) { return Icons.forNotification(notification) }
@@ -40,7 +40,7 @@ Item {
 
     // card background tap: run the default action and jump to the source window
     scale: bannerMouse.pressed ? 0.975 : 1.0
-    Behavior on scale { NumberAnimation { duration: 170; easing.type: Easing.OutBack; easing.overshoot: 2 } }
+    Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
 
     MouseArea {
         id: bannerMouse
@@ -136,8 +136,8 @@ Item {
         radius: 13
         color: closeMouse.containsMouse ? Colors.alpha(Colors.colFg, 0.18) : Colors.alpha(Colors.colFg, 0.07)
         scale: closeMouse.pressed ? 0.85 : 1.0
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
+        Behavior on color { ColorAnimation { duration: Motion.quick } }
+        Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop } }
 
         Text {
             anchors.centerIn: parent
@@ -174,8 +174,8 @@ Item {
                 radius: 15
                 color: actionMouse.containsMouse ? Colors.alpha(Colors.colBlue, 0.45) : Colors.alpha(Colors.colBlue, 0.28)
                 scale: actionMouse.pressed ? 0.92 : 1.0
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on scale { NumberAnimation { duration: 140; easing.type: Easing.OutBack } }
+                Behavior on color { ColorAnimation { duration: Motion.quick } }
+                Behavior on scale { NumberAnimation { duration: Motion.fast; easing.type: Motion.pop } }
 
                 Text {
                     id: actionLabel

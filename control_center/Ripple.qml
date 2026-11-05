@@ -25,7 +25,7 @@ Rectangle {
 
     ParallelAnimation {
         id: anim
-        NumberAnimation { target: ripple; property: "width"; from: 0; to: 260; duration: 460; easing.type: Easing.OutCubic }
+        NumberAnimation { target: ripple; property: "width"; from: 0; to: 260; duration: 460; easing.type: Motion.settle }
         NumberAnimation { target: ripple; property: "opacity"; from: 0.9; to: 0; duration: 460; easing.type: Easing.OutQuad }
     }
 }

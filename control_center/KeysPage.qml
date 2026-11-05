@@ -72,7 +72,7 @@ Page {
             height: 40
             radius: 14
             color: Colors.alpha(Colors.colFg, index === page.listIndex ? 0.10 : 0.055)
-            Behavior on color { ColorAnimation { duration: 120 } }
+            Behavior on color { ColorAnimation { duration: Motion.quick } }
 
             Row {
                 anchors { left: parent.left; leftMargin: 14; verticalCenter: parent.verticalCenter }

@@ -1,4 +1,5 @@
 import QtQuick
+import "../theme"
 
 // A control-center page. Slides + fades in/out as ControlState.page changes.
 // Pages with a list set `count` and react to `activateRequested`.
@@ -21,8 +22,8 @@ Item {
     visible: opacity > 0.01
     enabled: shown
 
-    Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
-    Behavior on x { NumberAnimation { duration: 340; easing.type: Easing.OutCubic } }
+    Behavior on opacity { NumberAnimation { duration: Motion.base; easing.type: Motion.settle } }
+    Behavior on x { NumberAnimation { duration: Motion.slide; easing.type: Motion.settle } }
 
     onShownChanged: if (shown) listIndex = 0
 

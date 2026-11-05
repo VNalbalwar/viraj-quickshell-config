@@ -30,7 +30,7 @@ Item {
 
     property int selectedTile: 0
 
-    Behavior on opacity { NumberAnimation { duration: 180 } }
+    Behavior on opacity { NumberAnimation { duration: Motion.fast } }
 
     onActiveChanged: {
         if (active) {
@@ -221,8 +221,8 @@ Item {
             opacity: cc.onMain ? 1 : 0
             x: cc.onMain ? 0 : -16
             font { pixelSize: 16; weight: Font.DemiBold }
-            Behavior on opacity { NumberAnimation { duration: 200 } }
-            Behavior on x { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: Motion.base } }
+            Behavior on x { NumberAnimation { duration: Motion.slide; easing.type: Motion.settle } }
         }
 
         Row {
@@ -231,8 +231,8 @@ Item {
             opacity: cc.onMain ? 0 : 1
             x: cc.onMain ? 16 : 0
             visible: opacity > 0.01
-            Behavior on opacity { NumberAnimation { duration: 200 } }
-            Behavior on x { NumberAnimation { duration: 280; easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: Motion.base } }
+            Behavior on x { NumberAnimation { duration: Motion.slide; easing.type: Motion.settle } }
 
             RoundButton {
                 icon: "󰁍"
@@ -253,7 +253,7 @@ Item {
             spacing: 12
             opacity: cc.onMain ? 1 : 0
             visible: opacity > 0.01
-            Behavior on opacity { NumberAnimation { duration: 200 } }
+            Behavior on opacity { NumberAnimation { duration: Motion.base } }
 
             RoundButton {
                 icon: "󰏘"
@@ -296,7 +296,7 @@ Item {
             spacing: 12
             opacity: (cc.page === "wifi" || cc.page === "bluetooth" || cc.page === "hotspot") ? 1 : 0
             visible: opacity > 0.01
-            Behavior on opacity { NumberAnimation { duration: 200 } }
+            Behavior on opacity { NumberAnimation { duration: Motion.base } }
 
             RoundButton {
                 visible: cc.page !== "hotspot"
