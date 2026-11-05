@@ -6,7 +6,7 @@ import Quickshell.Bluetooth
 import QtQuick
 import "../osd"
 import "../notifications"
-import "../wallpaper_switcher"
+import "../theming"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ControlState — the notch control center's state + the actions its tiles fire.
@@ -265,7 +265,7 @@ Singleton {
 
     function openWallpapers() {
         hide()
-        WallpaperState.show()
+        ThemeState.show()
     }
 
     function screenshot() {

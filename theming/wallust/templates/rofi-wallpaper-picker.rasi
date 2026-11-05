@@ -1,0 +1,15 @@
+/**
+ * Wallust colors for Rofi Wallpaper Picker
+ * This file ONLY defines variables.
+ * theme.rasi handles all layout & styling.
+ */
+
+* {
+    BG:   {{background}};
+    BGA:  {{color0}};
+    FG:   {{foreground}};
+    SEL:  {{color4}};
+    BDR:  {{color4}};
+    URG:  {{color1}};
+}
+

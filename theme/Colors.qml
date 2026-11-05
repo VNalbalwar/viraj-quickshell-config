@@ -10,6 +10,18 @@ Singleton {
     property var palette: ({})
     property int version: 0
 
+    // wallust replaces the file (new inode), which can end the file watch - so whoever changes the
+    // theme (ThemeState) also asks for a reload explicitly.
+    function reload() {
+        paletteFile.reload()
+        try {
+            root.palette = JSON.parse(paletteFile.text())
+            root.version++
+        } catch (e) {
+            console.log("Failed to reload palette:", e)
+        }
+    }
+
     FileView {
         id: paletteFile
 

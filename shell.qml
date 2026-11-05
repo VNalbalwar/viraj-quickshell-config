@@ -5,7 +5,7 @@ import QtQuick
 import Quickshell.Io
 import "./bar"
 import "./app_launcher"
-import "./wallpaper_switcher"
+import "./theming"
 import "./lockscreen"
 
 ShellRoot {

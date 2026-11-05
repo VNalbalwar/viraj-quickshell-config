@@ -1,0 +1,313 @@
+#!/usr/bin/env python3
+"""qs-theme - the one place that changes wallpaper and colors.
+
+  qs-theme list <dir>...        wallpapers as JSON: [{path, thumb, ready}]
+  qs-theme thumbs <dir>...      build missing thumbnails (cached, parallel)
+  qs-theme wallpaper <path>     set the wallpaper; colors follow it unless a theme is locked in
+  qs-theme preset <Name>        lock in a named theme (Catppuccin-Mocha, Nord, ...)
+  qs-theme auto                 colors follow the wallpaper again
+  qs-theme status               current mode / wallpaper / theme as JSON
+  qs-theme presets              the curated theme list (presets.json) as JSON
+  qs-theme index-presets        rebuild presets.json from wallust's built-in themes
+  qs-theme restore              re-apply what was last chosen (for login)
+
+Wallpaper = the picture. Theme = the colors. In "auto" mode the colors are derived from the picture
+(wallust); in "preset" mode they are a fixed named palette and changing the picture leaves them alone.
+Either way the same templates (theming/wallust) are rendered, so every app follows both."""
+import colorsys
+import concurrent.futures
+import fcntl
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+HOME = os.path.expanduser("~")
+ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))      # .../quickshell/theming
+WALLUST_DIR = os.path.join(ROOT, "wallust")
+PRESETS = os.path.join(ROOT, "presets.json")
+CACHE = os.path.join(HOME, ".cache", "qs-theme")
+THUMBS = os.path.join(CACHE, "thumbs")
+STATE = os.path.join(CACHE, "state.json")
+IMG = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
+THUMB_W, THUMB_H = 480, 300
+
+# the themes worth putting in front of you (wallust ships ~400; any of them works on the command line)
+CURATED = [
+    ("Catppuccin-Mocha", "Catppuccin Mocha"), ("Catppuccin-Macchiato", "Catppuccin Macchiato"),
+    ("Catppuccin-Frappé", "Catppuccin Frappé"), ("Catppuccin-Latte", "Catppuccin Latte"),
+    ("Tokyo-Night", "Tokyo Night"), ("Tokyo-Night-Storm", "Tokyo Night Storm"),
+    ("Gruvbox-Dark", "Gruvbox Dark"), ("Gruvbox-Material-Dark", "Gruvbox Material"),
+    ("Nord", "Nord"), ("Dracula", "Dracula"),
+    ("Rosé-Pine", "Rosé Pine"), ("Rosé-Pine-Moon", "Rosé Pine Moon"), ("Rosé-Pine-Dawn", "Rosé Pine Dawn"),
+    ("Everforest-Dark-Medium", "Everforest"), ("Kanagawa-Wave", "Kanagawa Wave"), ("Kanagawa-Dragon", "Kanagawa Dragon"),
+    ("One-Dark", "One Dark"), ("Solarized-Dark", "Solarized Dark"), ("Solarized-Light", "Solarized Light"),
+    ("Ayu-Mirage", "Ayu Mirage"), ("Github-Dark", "GitHub Dark"), ("Monokai-Pro", "Monokai Pro"),
+    ("Nightfly", "Nightfly"), ("Night-Owl", "Night Owl"), ("Oxocarbon-Dark", "Oxocarbon"),
+    ("Material", "Material"), ("Palenight", "Palenight"), ("Everblush", "Everblush"),
+    ("Iceberg", "Iceberg"), ("Horizon-Dark", "Horizon"), ("Sonokai", "Sonokai"),
+    ("Moonfly", "Moonfly"), ("Flexoki-Dark", "Flexoki"), ("Doom-One", "Doom One"),
+    ("Synthwave", "Synthwave"), ("Tender", "Tender"), ("Gotham", "Gotham"),
+]
+
+
+def sh(*cmd, **kw):
+    return subprocess.run(cmd, capture_output=True, text=True, **kw)
+
+
+def load_state():
+    try:
+        with open(STATE) as f:
+            return {**{"mode": "auto", "wallpaper": "", "preset": ""}, **json.load(f)}
+    except (OSError, ValueError):
+        return {"mode": "auto", "wallpaper": "", "preset": ""}
+
+
+def save_state(st):
+    os.makedirs(CACHE, exist_ok=True)
+    with open(STATE + ".tmp", "w") as f:
+        json.dump(st, f)
+    os.replace(STATE + ".tmp", STATE)
+
+
+# ── wallpapers + thumbnails ────────────────────────────────────────────────────────────────────────
+def scan(dirs):
+    out = []
+    for d in dirs:
+        d = os.path.expanduser(d)
+        for base, _, files in os.walk(d):
+            for name in files:
+                if name.lower().endswith(IMG):
+                    out.append(os.path.join(base, name))
+    return sorted(set(out), key=lambda p: os.path.basename(p).lower())
+
+
+def thumb_path(path):
+    st = os.stat(path)
+    key = hashlib.sha1(f"{path}|{st.st_mtime_ns}|{st.st_size}".encode()).hexdigest()[:20]
+    return os.path.join(THUMBS, key + ".jpg")
+
+
+def make_thumb(path):
+    out = thumb_path(path)
+    if os.path.exists(out):
+        return out
+    os.makedirs(THUMBS, exist_ok=True)
+    tmp = out + ".part"
+    if path.lower().endswith((".gif", ".bmp")):
+        r = sh("magick", path + "[0]", "-thumbnail", f"{THUMB_W}x{THUMB_H}^", "-gravity", "center",
+               "-extent", f"{THUMB_W}x{THUMB_H}", "-quality", "82", "jpg:" + tmp)
+    else:
+        r = sh("vipsthumbnail", path, "--size", f"{THUMB_W}x{THUMB_H}", "--smartcrop", "attention",
+               "-o", tmp + "[Q=82]")
+        if r.returncode != 0 or not os.path.exists(tmp):
+            r = sh("magick", path + "[0]", "-thumbnail", f"{THUMB_W}x{THUMB_H}^", "-gravity", "center",
+                   "-extent", f"{THUMB_W}x{THUMB_H}", "-quality", "82", "jpg:" + tmp)
+    if os.path.exists(tmp):
+        os.replace(tmp, out)
+        return out
+    return ""
+
+
+def cmd_list(dirs):
+    items = []
+    for p in scan(dirs):
+        t = thumb_path(p)
+        items.append({"path": p, "thumb": t, "ready": os.path.exists(t)})
+    print(json.dumps(items))
+
+
+def cmd_thumbs(dirs):
+    paths = [p for p in scan(dirs) if not os.path.exists(thumb_path(p))]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(2, (os.cpu_count() or 4) // 2)) as ex:
+        list(ex.map(make_thumb, paths))
+    print(len(paths))
+
+
+# ── applying ───────────────────────────────────────────────────────────────────────────────────────
+def luminance(hexcolor):
+    h = hexcolor.lstrip("#")
+    r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def read_palette():
+    try:
+        with open(os.path.join(HOME, ".cache/wallust/quickshell.json")) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def hook_hyprland():
+    """borders follow the palette, live (and decorations.lua reads the same file at login)"""
+    try:
+        with open(os.path.join(HOME, ".cache/wallust/colors-hyprland.lua")) as f:
+            c = dict(re.findall(r'(\w+)\s*=\s*"([^"]+)"', f.read()))
+    except OSError:
+        return
+    lua = ('hl.config({general={col={active_border={colors={"%s","%s"},angle=45},inactive_border="%s"}}})'
+           % (c["active"], c["active2"], c["inactive"]))
+    sh("hyprctl", "eval", lua)
+
+
+def hook_gtk(palette):
+    dark = luminance(palette.get("background", "#000000")) < 0.5
+    sh("gsettings", "set", "org.gnome.desktop.interface", "color-scheme", "prefer-dark" if dark else "prefer-light")
+    sh("gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", "adw-gtk3-dark" if dark else "adw-gtk3")
+
+
+def after_colors():
+    pal = read_palette()
+    hook_hyprland()
+    hook_gtk(pal)
+    sh("pkill", "-USR2", "-x", "cava")           # cava re-reads its theme
+
+
+def run_wallust_image(img):
+    return sh("wallust", "run", img, "-d", WALLUST_DIR, "-q")
+
+
+def run_wallust_theme(name):
+    return sh("wallust", "theme", name, "-d", WALLUST_DIR, "-q")
+
+
+def ensure_daemon():
+    if sh("pgrep", "-x", "awww-daemon").returncode != 0:
+        subprocess.Popen(["awww-daemon"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+        for _ in range(30):
+            if sh("awww", "query").returncode == 0:
+                break
+            import time
+            time.sleep(0.1)
+
+
+def set_picture(path):
+    sh("pkill", "-x", "mpvpaper")
+    ensure_daemon()
+    return subprocess.Popen(
+        ["awww", "img", path, "--transition-type", "wipe", "--transition-angle", "45",
+         "--transition-duration", "1.6", "--transition-fps", "60", "--transition-bezier", "0.65,0.05,0.36,1"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def remember_picture(path):
+    with open(os.path.join(HOME, ".cache/current_wallpaper"), "w") as f:
+        f.write(path + "\n")
+    with open(os.path.join(HOME, ".cache/current_wallpaper_type"), "w") as f:
+        f.write("image\n")
+    try:
+        shutil.copyfile(path, os.path.join(HOME, ".cache/wallpaper_frame.png"))
+    except OSError:
+        pass
+
+
+def cmd_wallpaper(path):
+    path = os.path.realpath(os.path.expanduser(path))
+    if not os.path.isfile(path):
+        sys.exit(f"no such wallpaper: {path}")
+    st = load_state()
+    st["wallpaper"] = path
+    proc = set_picture(path)                              # the picture and the colors work at the same time
+    if st["mode"] == "auto":
+        src = make_thumb(path) or path                    # colors from the small thumbnail: same palette, much faster
+        run_wallust_image(src)
+        after_colors()
+    save_state(st)
+    remember_picture(path)
+    proc.wait()
+
+
+def cmd_preset(name):
+    r = run_wallust_theme(name)
+    if r.returncode != 0:
+        sys.exit(f"unknown theme {name}: {r.stderr.strip()}")
+    st = load_state()
+    st.update(mode="preset", preset=name)
+    save_state(st)
+    after_colors()
+
+
+def cmd_auto():
+    st = load_state()
+    st["mode"] = "auto"
+    st["preset"] = ""
+    save_state(st)
+    if st["wallpaper"] and os.path.isfile(st["wallpaper"]):
+        run_wallust_image(make_thumb(st["wallpaper"]) or st["wallpaper"])
+        after_colors()
+
+
+def cmd_restore():
+    st = load_state()
+    if st["wallpaper"] and os.path.isfile(st["wallpaper"]):
+        set_picture(st["wallpaper"]).wait()
+    if st["mode"] == "preset" and st["preset"]:
+        run_wallust_theme(st["preset"])
+    elif st["wallpaper"] and os.path.isfile(st["wallpaper"]):
+        run_wallust_image(make_thumb(st["wallpaper"]) or st["wallpaper"])
+    after_colors()
+
+
+# ── preset catalogue ───────────────────────────────────────────────────────────────────────────────
+def cmd_index_presets():
+    out = []
+    with tempfile.TemporaryDirectory() as tmp:
+        os.makedirs(os.path.join(tmp, "templates"))
+        with open(os.path.join(tmp, "templates", "p.json"), "w") as f:
+            f.write('{"bg":"{{background}}","fg":"{{foreground}}","c":[' +
+                    ",".join('"{{color%d}}"' % i for i in range(16)) + "]}")
+        with open(os.path.join(tmp, "wallust.toml"), "w") as f:
+            f.write(f"[templates]\np = {{ template = 'p.json', target = '{tmp}/out.json' }}\n")
+        for name, label in CURATED:
+            r = sh("wallust", "theme", name, "-d", tmp, "-s", "-q")
+            if r.returncode != 0:
+                print("skip", name, r.stderr.strip(), file=sys.stderr)
+                continue
+            with open(os.path.join(tmp, "out.json")) as f:
+                p = json.load(f)
+            out.append({"name": name, "label": label, "dark": luminance(p["bg"]) < 0.5,
+                        "bg": p["bg"], "fg": p["fg"], "colors": p["c"]})
+    with open(PRESETS, "w") as f:
+        json.dump(out, f, indent=1, ensure_ascii=False)
+    print(f"{len(out)} themes -> {PRESETS}")
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(__doc__)
+    cmd, args = sys.argv[1], sys.argv[2:]
+    if cmd in ("list", "thumbs"):
+        {"list": cmd_list, "thumbs": cmd_thumbs}[cmd](args)
+        return
+    if cmd == "status":
+        print(json.dumps(load_state()))
+        return
+    if cmd == "presets":
+        with open(PRESETS) as f:
+            print(f.read())
+        return
+    os.makedirs(CACHE, exist_ok=True)
+    with open(os.path.join(CACHE, "lock"), "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)                  # one change at a time, in click order
+        if cmd == "wallpaper" and args:
+            cmd_wallpaper(args[0])
+        elif cmd == "preset" and args:
+            cmd_preset(args[0])
+        elif cmd == "auto":
+            cmd_auto()
+        elif cmd == "restore":
+            cmd_restore()
+        elif cmd == "index-presets":
+            cmd_index_presets()
+        else:
+            sys.exit(__doc__)
+
+
+if __name__ == "__main__":
+    main()

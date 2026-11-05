@@ -1,0 +1,9 @@
+[color]
+gradient = 1
+gradient_count = 6
+gradient_color_1 = '{{ color4 }}'
+gradient_color_2 = '{{ color12 }}'
+gradient_color_3 = '{{ color6 }}'
+gradient_color_4 = '{{ color5 }}'
+gradient_color_5 = '{{ color13 }}'
+gradient_color_6 = '{{ color1 }}'

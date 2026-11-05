@@ -4,7 +4,7 @@ import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import Quickshell.Widgets
-import "../wallpaper_switcher"
+import "../theming"
 import "../app_launcher"
 import "../osd"
 import "../theme"
@@ -18,7 +18,7 @@ import "../media"
 PanelWindow {
     property var screen
     property bool barVisible: true
-    property bool wallpaperMode: WallpaperState.visible
+    property bool wallpaperMode: ThemeState.visible
     property bool launcherMode: AppLauncherState.launcherVisible
     property bool powerMode: PowerState.visible
     property bool controlMode: ControlState.visible
@@ -49,12 +49,12 @@ PanelWindow {
     exclusionMode: ExclusionMode.Normal
     exclusiveZone: barVisible ? 50 : 0
     color: "transparent"
-    implicitHeight: controlMode ? Ui.height : (notifMode ? Math.max(160, notifView.wantedHeight) : (mediaListMode ? Math.max(160, mediaList.wantedHeight + 6) : (wallpaperMode ? 180 : (launcherMode ? 240 : (osdMode ? 44 : 160)))))
+    implicitHeight: controlMode ? Ui.height : (notifMode ? Math.max(160, notifView.wantedHeight) : (mediaListMode ? Math.max(160, mediaList.wantedHeight + 6) : (wallpaperMode ? 214 : (launcherMode ? 240 : (osdMode ? 44 : 160)))))
 
     onControlModeChanged: {
         if (controlMode) {
             if (wallpaperMode)
-                WallpaperState.hide()
+                ThemeState.hide()
 
             if (launcherMode)
                 AppLauncherState.hide()
@@ -91,7 +91,7 @@ PanelWindow {
     onLauncherModeChanged: {
         if (launcherMode) {
             if (wallpaperMode)
-                WallpaperState.hide()
+                ThemeState.hide()
 
             if (powerMode)
                 PowerState.hide()
@@ -111,7 +111,7 @@ PanelWindow {
     onPowerModeChanged: {
         if (powerMode) {
             if (wallpaperMode)
-                WallpaperState.hide()
+                ThemeState.hide()
 
             if (launcherMode)
                 AppLauncherState.hide()
@@ -142,7 +142,7 @@ PanelWindow {
         interval: 520
         repeat: false
         onTriggered: {
-            if (wallpaperClosing && !WallpaperState.visible) {
+            if (wallpaperClosing && !ThemeState.visible) {
                 wallpaperClosing = false
                 barVisible = false
             }
@@ -161,7 +161,7 @@ PanelWindow {
 
             if (wallpaperMode) {
                 wallpaperClosing = true
-                WallpaperState.hide()
+                ThemeState.hide()
                 wallpaperHideTimer.restart()
                 return
             }
@@ -202,14 +202,14 @@ PanelWindow {
 
         function toggle(): void {
             if (wallpaperMode) {
-                WallpaperState.hide()
+                ThemeState.hide()
             }
             AppLauncherState.toggle()
         }
 
         function show(): void {
             if (wallpaperMode) {
-                WallpaperState.hide()
+                ThemeState.hide()
             }
             AppLauncherState.show()
         }
@@ -336,7 +336,7 @@ PanelWindow {
             notifMode ? notifView.wantedHeight :
             wsMode ? wsView.wantedHeight :
             mediaListMode ? mediaList.wantedHeight :
-            wallpaperMode ? 180 :
+            wallpaperMode ? 214 :
             launcherMode ? 240 :
             osdMode ? 44 :
             (expanded ? 130 : 44)
@@ -1102,159 +1102,10 @@ PanelWindow {
             }
         }
 
-        Item {
+        ThemePanel {
             id: wallpaperView
-
             anchors.fill: parent
-            visible: wallpaperMode
-            opacity: wallpaperMode ? 1 : 0
-            focus: wallpaperMode
-
-            Behavior on opacity {
-                NumberAnimation { duration: 180 }
-            }
-
-            onVisibleChanged: {
-                if (visible)
-                    forceActiveFocus()
-            }
-
-            Keys.onPressed: function(event) {
-                if (event.key === Qt.Key_Escape) {
-                    WallpaperState.hide()
-                    event.accepted = true
-                    return
-                }
-
-                if (!wallpaperMode || wallpaperList.count === 0)
-                    return
-
-                var oldIndex = WallpaperState.selectedIndex
-                var nextIndex = oldIndex
-
-                if (event.key === Qt.Key_Left || event.key === Qt.Key_Up) {
-                    nextIndex = (oldIndex - 1 + wallpaperList.count) % wallpaperList.count
-                } else if (event.key === Qt.Key_Right || event.key === Qt.Key_Down) {
-                    nextIndex = (oldIndex + 1) % wallpaperList.count
-                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                    WallpaperState.selectAndApply()
-                    event.accepted = true
-                    return
-                } else {
-                    return
-                }
-
-                WallpaperState.selectedIndex = nextIndex
-
-                var oldPage = Math.floor(oldIndex / wallpaperList.pageSize)
-                var newPage = Math.floor(nextIndex / wallpaperList.pageSize)
-
-                if (oldPage !== newPage) {
-                    pageSlideAnimation.from = wallpaperList.contentX
-
-                    var pageOffset =
-                        newPage * wallpaperList.pageSize *
-                        (wallpaperList.itemWidth + wallpaperList.spacing)
-
-                    pageSlideAnimation.to = pageOffset
-                    pageSlideAnimation.start()
-                }
-
-                event.accepted = true
-            }
-
-            Text {
-                anchors {
-                    left: parent.left
-                    top: parent.top
-                    leftMargin: 24
-                    topMargin: 18
-                }
-
-                text: "Wallpaper"
-                color: Colors.fg
-                font { pixelSize: 16; weight: Font.DemiBold }
-            }
-
-            ListView {
-                id: wallpaperList
-
-                anchors {
-                    left: parent.left
-                    right: parent.right
-                    bottom: parent.bottom
-                    bottomMargin: 18
-                    leftMargin: 24
-                    rightMargin: 24
-                }
-
-                boundsBehavior: Flickable.StopAtBounds
-                height: 105
-                orientation: ListView.Horizontal
-                spacing: 12
-                model: WallpaperState.wallpapers
-
-                property int pageSize: 5
-                property real itemWidth: (width - (4 * spacing)) / 5
-                property real pageWidth: 5 * (itemWidth + spacing)
-
-                NumberAnimation {
-                    id: pageSlideAnimation
-                    target: wallpaperList
-                    property: "contentX"
-                    duration: 500
-                    easing.type: Easing.InOutCubic
-                }
-
-                delegate: Rectangle {
-                    id: wallpaperCard
-                    width: wallpaperList.itemWidth
-                    height: 100
-                    radius: 14
-                    clip: true
-                    antialiasing: true
-                    color: Colors.alpha(Colors.colFg, 0.06)
-
-                    HoverHandler { id: wallpaperHover }
-
-                    scale: wallpaperHover.hovered ? 1.045 : 1.0
-                    Behavior on scale {
-                        NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
-                    }
-
-                    ClippingRectangle {
-                        anchors.fill: parent
-                        radius: wallpaperCard.radius
-
-                        Image {
-                            anchors.fill: parent
-                            source: "file://" + modelData
-                            fillMode: Image.PreserveAspectCrop
-                            asynchronous: true
-                            cache: true
-                        }
-                    }
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: "transparent"
-                        border.width: index === WallpaperState.selectedIndex ? 3 : (wallpaperHover.hovered ? 2 : 0)
-                        border.color: index === WallpaperState.selectedIndex ? Colors.colBlue : Colors.alpha(Colors.colFg, 0.55)
-                        radius: wallpaperCard.radius
-                        antialiasing: true
-                        Behavior on border.width { NumberAnimation { duration: 120 } }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: {
-                            WallpaperState.selectedIndex = index
-                            wallpaperView.forceActiveFocus()
-                            WallpaperState.selectAndApply()
-                        }
-                    }
-                }
-            }
+            active: wallpaperMode
         }
     }
 }
