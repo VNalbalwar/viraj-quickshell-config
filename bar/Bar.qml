@@ -3,6 +3,7 @@ import Quickshell.Services.Mpris
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Shapes
 import Quickshell.Widgets
 import "../theming"
 import "../app_launcher"
@@ -16,6 +17,7 @@ import "../workspaces"
 import "../media"
 
 PanelWindow {
+    id: bar
     property var screen
     property bool barVisible: true
     property bool wallpaperMode: ThemeState.visible
@@ -303,6 +305,47 @@ PanelWindow {
             result.push(d.getDate())
         }
         return result
+    }
+
+    // The notch's top corners flare outward into the screen edge (like a real notch): one small "ear" on each
+    // side, the same size at every width, so the shape stays consistent whenever the island grows or shrinks.
+    // (Siblings of the island, not children: the island clips its contents.)
+    readonly property real earSize: 14
+
+    Shape {
+        id: earLeft
+        x: island.x + island.width * (1 - island.scale) / 2 - bar.earSize     // visible left edge of the island, minus the ear
+        y: 0
+        width: bar.earSize
+        height: bar.earSize
+        opacity: island.opacity
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            fillColor: island.color
+            strokeWidth: -1
+            startX: 0; startY: 0
+            PathLine { x: bar.earSize; y: 0 }
+            PathLine { x: bar.earSize; y: bar.earSize }
+            PathArc { x: 0; y: 0; radiusX: bar.earSize; radiusY: bar.earSize; direction: PathArc.Counterclockwise }
+        }
+    }
+
+    Shape {
+        id: earRight
+        x: island.x + island.width - island.width * (1 - island.scale) / 2     // visible right edge
+        y: 0
+        width: bar.earSize
+        height: bar.earSize
+        opacity: island.opacity
+        preferredRendererType: Shape.CurveRenderer
+        ShapePath {
+            fillColor: island.color
+            strokeWidth: -1
+            startX: bar.earSize; startY: 0
+            PathLine { x: 0; y: 0 }
+            PathLine { x: 0; y: bar.earSize }
+            PathArc { x: bar.earSize; y: 0; radiusX: bar.earSize; radiusY: bar.earSize; direction: PathArc.Clockwise }
+        }
     }
 
     Rectangle {
