@@ -107,6 +107,7 @@ Singleton {
         var c = themeCards[themeCursor]
         if (!c) return
         if (c.auto) followWallpaper(); else applyPreset(c.name)
+        hide()                                    // closes on selection, like the wallpaper page
     }
 
     // ── reading state ────────────────────────────────────────────────────────────────────────────
