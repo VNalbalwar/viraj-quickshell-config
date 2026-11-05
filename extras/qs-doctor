@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""qs-doctor - is everything in the shell setup healthy?  Prints OK / WARN / FAIL per check, with a hint for each problem.
+  qs-doctor            run all checks        qs-doctor --quiet   only problems (exit code 1 if any FAIL)"""
+import glob
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+HOME = os.path.expanduser("~")
+QS = os.path.join(HOME, ".config/quickshell")
+HYPR = os.path.join(HOME, ".config/hypr")
+quiet = "--quiet" in sys.argv
+results = []
+
+
+def run(*cmd, timeout=8):
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except Exception as e:                                   # missing binary / timeout
+        return subprocess.CompletedProcess(cmd, 127, "", str(e))
+
+
+def check(level, name, detail="", hint=""):
+    results.append((level, name, detail, hint))
+
+
+def ok(name, detail="", hint=""): check("OK", name, detail)
+def warn(name, detail, hint=""): check("WARN", name, detail, hint)
+def fail(name, detail, hint=""): check("FAIL", name, detail, hint)
+
+
+# ── the shell itself ───────────────────────────────────────────────────────────
+r = run("pgrep", "-x", "qs")
+if r.returncode == 0:
+    ok("Quickshell is running")
+    log = run("qs", "log").stdout
+    last = log.rsplit("Reloading configuration", 1)[-1] if "Reloading configuration" in log else log
+    errs = [l for l in last.splitlines() if "ERROR" in l]
+    if errs:
+        fail("Shell config has load errors", errs[-1].strip()[:140], "fix that file; qs keeps the previous version until it loads")
+    else:
+        ok("Shell config loaded without errors")
+    ipc = run("qs", "ipc", "show").stdout
+    missing = [t for t in ("bar", "theme", "wallpaper-switcher", "control", "launcher", "lock", "notifications") if f"target {t}" not in ipc]
+    (fail if missing else ok)("IPC targets", ("missing: " + ", ".join(missing)) if missing else "all present",
+                              "restart the shell: pkill -x qs; setsid -f qs" if missing else "")
+else:
+    fail("Quickshell is not running", "", "start it: setsid -f qs")
+
+p = run("sh", "-c", "pid=$(pgrep -x qs | head -1); [ -n \"$pid\" ] && grep -c nvidia /proc/$pid/maps")
+if p.stdout.strip() not in ("", "0"):
+    warn("Shell is using the NVIDIA GPU", "every animation frame crosses GPUs",
+         "start it with __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json (see hypr/modules/autostart.lua)")
+elif r.returncode == 0:
+    ok("Shell renders on the Intel GPU")
+
+# ── Hyprland ───────────────────────────────────────────────────────────────────
+cfg = run("hyprctl", "configerrors").stdout.strip()
+(fail if cfg else ok)("Hyprland config", cfg[:140] if cfg else "no errors", "see hyprctl configerrors" if cfg else "")
+if not os.path.isdir(os.path.join(HYPR, ".git")):
+    warn("Hyprland config is not in git", HYPR, "git init there and push it somewhere safe")
+else:
+    dirty = run("git", "-C", HYPR, "status", "--porcelain").stdout.strip()
+    (warn if dirty else ok)("Hyprland config committed", "uncommitted changes" if dirty else "clean", "git -C ~/.config/hypr commit -am ..." if dirty else "")
+
+# ── tools the features call ────────────────────────────────────────────────────
+tools = {
+    "wallust": "colors from wallpapers", "awww": "wallpaper transitions", "hyprshot": "screenshots", "grim": "screenshots",
+    "slurp": "region picking", "wf-recorder": "screen recording", "nautilus": "file manager", "pactl": "audio / mixer",
+    "nmcli": "weather online check, Wi-Fi", "cliphist": "clipboard history", "vipsthumbnail": "wallpaper thumbnails",
+    "magick": "image conversion", "playerctl": "media keys", "brightnessctl": "brightness", "wl-copy": "clipboard",
+}
+for t, why in tools.items():
+    if shutil.which(t) is None:
+        warn(f"missing tool: {t}", why, f"install it (pacman -S {t})")
+if all(shutil.which(t) for t in tools):
+    ok("All required tools installed")
+
+drv = os.path.exists("/usr/lib/dri/iHD_drv_video.so")
+(ok if drv else warn)("Hardware video encoding", "Intel iHD driver present" if drv else "recording will use the CPU",
+                      "" if drv else "sudo pacman -S intel-media-driver libva-utils")
+
+# ── theming ────────────────────────────────────────────────────────────────────
+pal = os.path.join(HOME, ".cache/wallust/quickshell.json")
+try:
+    json.load(open(pal))
+    ok("Theme palette file is valid")
+except Exception as e:
+    fail("Theme palette file", str(e)[:100], f"run: {QS}/theming/bin/qs-theme auto")
+try:
+    st = json.load(open(os.path.join(HOME, ".cache/qs-theme/state.json")))
+    detail = f"{st['mode']}" + (f" ({st['preset']})" if st["mode"] == "preset" else "")
+    if st.get("wallpaper") and not os.path.isfile(st["wallpaper"]):
+        warn("Saved wallpaper is missing", st["wallpaper"], "pick another in the wallpaper switcher")
+    else:
+        ok("Theme state", detail)
+except Exception:
+    warn("No saved theme state yet", "", "pick a wallpaper or theme once")
+for d in ("Pictures/Hyprland-Wallpapers", "Pictures/Wallpapers"):
+    (ok if os.path.isdir(os.path.join(HOME, d)) else warn)(f"Wallpaper folder ~/{d}", "" if os.path.isdir(os.path.join(HOME, d)) else "not found")
+(ok if run("pgrep", "-x", "awww-daemon").returncode == 0 else fail)("awww-daemon (wallpaper)", "", "start it: awww-daemon &")
+
+# live-reload hooks that need one-time setup
+chrome = "/etc/opt/chrome/policies/managed"
+(ok if os.access(chrome, os.W_OK) else warn)("Chrome live theming", "policy folder writable" if os.access(chrome, os.W_OK) else "not set up",
+                                           "" if os.access(chrome, os.W_OK) else f"{QS}/theming/extras/chrome-setup.sh")
+spice = os.path.join(HOME, ".local/bin/spicetify")
+(ok if os.access(spice, os.X_OK) else warn)("Spotify live theming", "spicetify installed" if os.access(spice, os.X_OK) else "not set up",
+                                          "" if os.access(spice, os.X_OK) else f"{QS}/theming/extras/spotify-setup.sh")
+nv = glob.glob(os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/run/user/1000"), "nvim.*.0"))
+ok("Neovim live theming", f"{len(nv)} running instance(s) will follow" if nv else "applies when nvim starts")
+
+# ── repo state ─────────────────────────────────────────────────────────────────
+dirty = run("git", "-C", QS, "status", "--porcelain").stdout.strip()
+ahead = run("git", "-C", QS, "rev-list", "--count", "@{u}..HEAD").stdout.strip()
+(warn if dirty else ok)("Shell repo committed", "uncommitted changes" if dirty else "clean", "commit them" if dirty else "")
+(warn if ahead not in ("", "0") else ok)("Shell repo pushed", f"{ahead} commit(s) not pushed" if ahead not in ("", "0") else "up to date",
+                                         "git push" if ahead not in ("", "0") else "")
+
+# ── report ─────────────────────────────────────────────────────────────────────
+col = {"OK": "\033[32m", "WARN": "\033[33m", "FAIL": "\033[31m"}
+bad = 0
+for level, name, detail, hint in results:
+    if level != "OK":
+        bad += 1
+    if quiet and level == "OK":
+        continue
+    line = f"{col[level]}{level:<4}\033[0m  {name}" + (f"  - {detail}" if detail else "")
+    print(line)
+    if hint and level != "OK":
+        print(f"        -> {hint}")
+fails = sum(1 for r_ in results if r_[0] == "FAIL")
+print(f"\n{len(results) - bad} ok, {sum(1 for r_ in results if r_[0] == 'WARN')} warnings, {fails} failures")
+sys.exit(1 if fails else 0)

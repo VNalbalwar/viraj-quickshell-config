@@ -12,14 +12,22 @@ Singleton {
 
     // wallust replaces the file (new inode), which can end the file watch - so whoever changes the
     // theme (ThemeState) also asks for a reload explicitly.
-    function reload() {
-        paletteFile.reload()
+    // apply a freshly read palette; `version` only moves when the colors really changed (so the theme ripple
+    // doesn't play for a file that was rewritten with the same colors, e.g. at login)
+    function applyText(t) {
         try {
-            root.palette = JSON.parse(paletteFile.text())
+            var next = JSON.parse(t)
+            if (JSON.stringify(next) === JSON.stringify(root.palette)) return
+            root.palette = next
             root.version++
         } catch (e) {
             console.log("Failed to reload palette:", e)
         }
+    }
+
+    function reload() {
+        paletteFile.reload()
+        root.applyText(paletteFile.text())
     }
 
     FileView {
@@ -39,15 +47,8 @@ Singleton {
         }
 
         onFileChanged: {
-            reload()
-
-            try {
-                root.palette = JSON.parse(text())
-                version++
-                console.log("Version =", version)
-            } catch (e) {
-                console.log("Failed to reload palette:", e)
-            }
+            reload()                      // (the FileView's own reload)
+            root.applyText(text())
         }
     }
 
