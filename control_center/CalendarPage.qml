@@ -8,9 +8,9 @@ Page {
 
     property int offset: 0                         // months from this one
     readonly property date today: new Date()
-    readonly property date shown: new Date(today.getFullYear(), today.getMonth() + offset, 1)
-    readonly property int firstCol: (shown.getDay() + 6) % 7                       // Monday first
-    readonly property int daysIn: new Date(shown.getFullYear(), shown.getMonth() + 1, 0).getDate()
+    readonly property date viewDate: new Date(today.getFullYear(), today.getMonth() + offset, 1)   // (not `shown`: that is the Page's own open/closed flag)
+    readonly property int firstCol: (viewDate.getDay() + 6) % 7                       // Monday first
+    readonly property int daysIn: new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate()
 
     onShownChanged: if (shown) { offset = 0; CalendarState.refresh() }
 
@@ -47,7 +47,7 @@ Page {
                 width: parent.width - 60
                 horizontalAlignment: Text.AlignHCenter
                 anchors.verticalCenter: parent.verticalCenter
-                text: Qt.formatDate(page.shown, "MMMM yyyy")
+                text: Qt.formatDate(page.viewDate, "MMMM yyyy")
                 color: Colors.fg
                 font { pixelSize: 14; weight: Font.DemiBold }
             }
