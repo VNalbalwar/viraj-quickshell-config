@@ -3,7 +3,7 @@ import Quickshell.Wayland
 import QtQuick
 import "../theme"
 
-// When the colors change (a theme or wallpaper switch), a soft ring of the new accent color spreads from the
+// When the colors change from a THEME switch (a wallpaper pick doesn't: the picture grows out of the notch instead), a soft ring of the new accent color spreads from the
 // notch across the whole screen. It is a click-through overlay that only exists for about a second.
 PanelWindow {
     id: win
@@ -27,7 +27,7 @@ PanelWindow {
         target: Colors
         function onVersionChanged() { debounce.restart() }
     }
-    Timer { id: debounce; interval: 200; onTriggered: { win.visible = true; anim.restart() } }
+    Timer { id: debounce; interval: 200; onTriggered: { if (ThemeState.rippleOff) return; win.visible = true; anim.restart() } }
 
     SequentialAnimation {
         id: anim
