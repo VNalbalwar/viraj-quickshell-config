@@ -27,5 +27,10 @@ echo "4/4 applying"
 spicetify config current_theme wallust color_scheme wallust
 spicetify config inject_css 1 replace_colors 1 overwrite_assets 1
 spicetify backup apply
+# live reload needs Spotify started with a debugging port: add it to your launcher entry
+mkdir -p ~/.local/share/applications
+if [ -f ~/.local/share/applications/spotify.desktop ]; then
+    sed -i 's|^Exec=spotify |Exec=spotify --remote-debugging-port=8089 |; s|--remote-debugging-port=8089 --remote-debugging-port=8089|--remote-debugging-port=8089|' ~/.local/share/applications/spotify.desktop
+fi
 echo
 echo "Done. Close and reopen Spotify once; after that it recolors live."
