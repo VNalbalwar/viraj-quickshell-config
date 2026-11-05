@@ -268,6 +268,7 @@ Singleton {
     function isMultiWindow(app) {
         var cats = app.categories || []
         return cats.indexOf("WebBrowser") !== -1 || cats.indexOf("TerminalEmulator") !== -1 || cats.indexOf("FileManager") !== -1
+            || cats.indexOf("IDE") !== -1 || cats.indexOf("TextEditor") !== -1          // editors: VS Code, Zed, ...
     }
 
     // the app's windows that are open right now, most recently used first
@@ -291,10 +292,22 @@ Singleton {
             } }
     }
 
+    // a NEW window: the app's own "New (Empty) Window" action when it has one (VS Code does: running `code` again
+    // would just refocus the existing window), otherwise a plain launch
+    function newWindow(app) {
+        var acts = app.actions || []
+        for (var i = 0; i < acts.length; i++)
+            if (/new[ -]*(empty[ -]*)?window/i.test(acts[i].name || "") || /new[-_]?(empty[-_]?)?window/i.test(acts[i].id || "")) {
+                acts[i].execute()
+                return
+            }
+        app.execute()
+    }
+
     function appResult(app) {
         return { kind: "app", name: app.name, sub: "", icon: app.icon, iconSource: Icons.forApp(app), glyph: "",
             run: function() {
-                if (root.isMultiWindow(app)) app.execute()            // browsers etc: this card means "a new window"
+                if (root.isMultiWindow(app)) root.newWindow(app)      // browsers, editors...: this card means "a new window"
                 else NotificationState.focusOrLaunch(app)             // single-window apps: already open? go to it
                 AppLauncherState.recordLaunch(app.id)
             } }
