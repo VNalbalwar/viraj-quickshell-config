@@ -392,8 +392,15 @@ Item {
                 anchors { left: parent.left; top: parent.top; bottom: parent.bottom; margins: 3 }
                 width: Math.max(2, (parent.width - 6) * Math.min(content.battery, 100) / 100)
                 radius: 3
-                color: content.battery < 20 ? Colors.colRed : Colors.colGreen
+                color: content.battery < 20 ? Colors.colBrightRed : Colors.colBrightGreen
             }
+        }
+        Text {
+            visible: !UPower.onBattery
+            anchors.verticalCenter: parent.verticalCenter
+            text: "󱐋"
+            color: Colors.colBrightGreen
+            font { family: content.mono; pixelSize: 15 }
         }
         Text {
             text: Math.round(content.battery) + "%" + (UPower.displayDevice && UPower.displayDevice.state === UPowerDeviceState.Charging ? "  charging" : "")

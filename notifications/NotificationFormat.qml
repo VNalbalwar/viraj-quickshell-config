@@ -41,7 +41,14 @@ Singleton {
         var body = n.body || ""
         var out = { label: n.appName || "", title: summary, body: body, plain: false, icon: "" }
 
-        var m = isBrowser(n.appName) ? body.match(/^\s*([a-z0-9][a-z0-9.-]*\.[a-z]{2,})\s*[~|·–—-]\s*([\s\S]*)$/i) : null
+        var m = null
+        if (isBrowser(n.appName)) {
+            m = body.match(/^\s*([a-z0-9][a-z0-9.-]*\.[a-z]{2,})\s*[~|·–—-]\s*([\s\S]*)$/i)          // "site ~ message"
+            if (!m) {                                                                                     // "web.whatsapp.com Sticker": no separator
+                var bare = body.match(/^\s*([a-z0-9][a-z0-9.-]*\.[a-z]{2,})\s+([\s\S]*)$/i)
+                if (bare && sites[bare[1].toLowerCase()]) m = bare
+            }
+        }
         if (!m) return out
 
         var host = m[1].toLowerCase()

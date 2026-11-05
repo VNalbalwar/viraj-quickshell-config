@@ -43,8 +43,10 @@ Page {
 
             width: list.width
             icon: urgency === 2 ? "󰂞" : "󰂚"
-            title: summary !== "" ? summary : app
-            subtitle: app + (body !== "" ? "  ·  " + body.replace(/\s+/g, " ") : "")
+            // same cleanup as the banner: sender / subject first, the message, the site as a label
+            readonly property var fmt: NotificationFormat.format({ appName: app, summary: summary, body: body })
+            title: fmt.title !== "" ? fmt.title : app
+            subtitle: fmt.label + (fmt.body !== "" ? "  ·  " + fmt.body.replace(/\s+/g, " ") : "")
             tag: NotificationState.ago(time)
             on: urgency === 2
             picked: index === page.listIndex

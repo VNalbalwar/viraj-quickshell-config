@@ -351,7 +351,7 @@ PanelWindow {
             wallpaperMode ? 214 :
             launcherMode ? 240 :
             osdMode ? 44 :
-            (expanded ? 146 : 44)
+            (expanded ? 150 : 44)
         implicitHeight: goalHeight
 
         radius: panelMode ? 34 : (osdMode ? 16 : (expanded ? 34 : 16))
@@ -775,7 +775,7 @@ PanelWindow {
             }
 
             Row {
-                anchors { left: songInfo.left; bottom: parent.bottom; bottomMargin: 25 }
+                anchors { left: songInfo.left; bottom: parent.bottom; bottomMargin: 45 }
                 spacing: 7
                 Rectangle {
                     width: 34; height: 34; radius: 17
