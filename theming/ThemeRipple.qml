@@ -31,7 +31,7 @@ PanelWindow {
 
     SequentialAnimation {
         id: anim
-        NumberAnimation { target: win; property: "progress"; from: 0; to: 1; duration: 1200; easing.type: Easing.OutCubic }
+        NumberAnimation { target: win; property: "progress"; from: 0; to: 1; duration: 1600; easing.type: Easing.OutCubic }
         ScriptAction { script: win.visible = false }
     }
 
