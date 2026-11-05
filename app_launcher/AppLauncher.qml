@@ -1,3 +1,4 @@
+import "../notifications"
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
@@ -81,7 +82,7 @@ PanelWindow {
     // ── Launch ─────────────────────────────────────────────────────────────
     function launchEntry(entry) {
         AppLauncherState.recordLaunch(entry.id);
-        entry.execute();
+        NotificationState.focusOrLaunch(entry);   // already open? go to it instead of starting a second copy
         AppLauncherState.hide();
     }
 

@@ -188,7 +188,7 @@ Singleton {
     function appResult(app) {
         return { kind: "app", name: app.name, sub: "", icon: app.icon, iconSource: Icons.forApp(app), glyph: "",
             run: function() {
-                app.execute()
+                NotificationState.focusOrLaunch(app)      // already open? go to it instead of starting a second copy
                 AppLauncherState.recordLaunch(app.id)
             } }
     }

@@ -148,6 +148,23 @@ Singleton {
     function focusSource(app, entry) {
         root.pendingApp = app || ""
         root.pendingEntry = entry || ""
+        root.pendingLaunch = null
+        clientsProcess.running = false
+        clientsProcess.running = true
+    }
+
+    // Launcher: if the app already has a window, go to it (switching workspace); otherwise start it.
+    // Terminal emulators are the exception - opening one again is meant to give a new window.
+    property var pendingLaunch: null
+    property string pendingClass: ""
+
+    function focusOrLaunch(entry) {
+        var cats = entry.categories || []
+        if (cats.indexOf("TerminalEmulator") !== -1) { entry.execute(); return }
+        root.pendingApp = entry.name || ""
+        root.pendingEntry = entry.id || ""
+        root.pendingClass = entry.startupClass || ""
+        root.pendingLaunch = entry
         clientsProcess.running = false
         clientsProcess.running = true
     }
@@ -164,10 +181,11 @@ Singleton {
         }
         add(entry)
         add(app)
+        add(root.pendingClass)
         return keys
     }
 
-    function bestWindow(clients, keys) {
+    function bestWindow(clients, keys, classOnly) {
         var best = null, bestScore = 0
         for (var i = 0; i < clients.length; i++) {
             var c = clients[i]
@@ -181,7 +199,7 @@ Singleton {
                 if (cls === k || icls === k) score = Math.max(score, 100)
                 else if (cls.length && (cls.endsWith("." + k) || cls.indexOf(k) !== -1)) score = Math.max(score, 60)
                 else if (icls.indexOf(k) !== -1) score = Math.max(score, 55)
-                else if (k.length >= 3 && title.indexOf(k) !== -1) score = Math.max(score, 30)
+                else if (!classOnly && k.length >= 3 && title.indexOf(k) !== -1) score = Math.max(score, 30)
             }
             if (score === 0) continue
             // prefer the window you used most recently
@@ -197,13 +215,18 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    var win = root.bestWindow(JSON.parse(text), root.keysFor(root.pendingApp, root.pendingEntry))
+                    var launching = root.pendingLaunch
+                    var win = root.bestWindow(JSON.parse(text), root.keysFor(root.pendingApp, root.pendingEntry), launching !== null)
+                    root.pendingLaunch = null
+                    root.pendingClass = ""
+                    if (!win && launching) launching.execute()
                     if (win) {
                         // hl.dsp.focus switches to the window's workspace (with the workspace animation)
                         Quickshell.execDetached(["hyprctl", "dispatch", "hl.dsp.focus({ window = 'address:" + win.address + "' })"])
                     }
                 } catch (e) {
                     console.log("focusSource failed:", e)
+                    if (root.pendingLaunch) { root.pendingLaunch.execute(); root.pendingLaunch = null }
                 }
             }
         }
