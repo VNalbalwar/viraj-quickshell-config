@@ -9,8 +9,9 @@ if ! command -v spicetify >/dev/null; then
     TMP="$(mktemp -d)"
     curl -fsSL "https://github.com/spicetify/cli/releases/download/v${VER}/spicetify-${VER}-linux-amd64.tar.gz" -o "$TMP/s.tgz"
     mkdir -p ~/.local/bin
-    tar -xzf "$TMP/s.tgz" -C "$TMP" spicetify
+    tar -xzf "$TMP/s.tgz" -C "$TMP"
     install -m755 "$TMP/spicetify" ~/.local/bin/spicetify
+    for d in jsHelper CustomApps Extensions Themes; do [ -d "$TMP/$d" ] && cp -r "$TMP/$d" ~/.local/bin/; done   # spicetify looks for these next to itself
     rm -rf "$TMP"
 fi
 export PATH="$HOME/.local/bin:$PATH"
