@@ -444,7 +444,7 @@ PanelWindow {
             Behavior on opacity { NumberAnimation { duration: Motion.fast } }
         }
 
-        // plugged in: a neon bolt beside the clock, glowing in the theme's accent colour
+        // plugged in: a bolt beside the clock in a neon version of the theme's accent colour (just the colour, no halo)
         Item {
             id: boltSlot
             anchors { verticalCenter: clockText.verticalCenter; left: clockText.right; leftMargin: 6 }   // right of the clock: the left side belongs to the workspace dots
@@ -454,28 +454,6 @@ PanelWindow {
             scale: OsdState.pluggedIn ? 1 : 0.4
             Behavior on opacity { NumberAnimation { duration: Motion.base } }
             Behavior on scale { NumberAnimation { duration: Motion.slide; easing.type: Motion.pop; easing.overshoot: Motion.overshoot } }
-
-            // the glow: a blurred, colourised copy behind the crisp bolt, breathing slowly
-            MultiEffect {
-                anchors.centerIn: bolt
-                width: bolt.width + 24
-                height: bolt.height + 24
-                source: bolt
-                autoPaddingEnabled: false
-                blurEnabled: true
-                blur: 1.0
-                blurMax: 20
-                colorization: 1.0
-                colorizationColor: Colors.neon
-                brightness: 0.4
-                opacity: 0.55
-                SequentialAnimation on opacity {
-                    running: OsdState.pluggedIn
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 0.35; to: 0.9; duration: 1300; easing.type: Motion.ease }
-                    NumberAnimation { from: 0.9; to: 0.35; duration: 1300; easing.type: Motion.ease }
-                }
-            }
 
             Text {
                 id: bolt
