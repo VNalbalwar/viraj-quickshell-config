@@ -65,6 +65,28 @@ else:
     dirty = run("git", "-C", HYPR, "status", "--porcelain").stdout.strip()
     (warn if dirty else ok)("Hyprland config committed", "uncommitted changes" if dirty else "clean", "git -C ~/.config/hypr commit -am ..." if dirty else "")
 
+# ── crashes ────────────────────────────────────────────────────────────────────
+import time as _t
+exits = [l for l in run("journalctl", "-b", "--no-pager", "-g", "Hyprland exit not-cleanly").stdout.splitlines() if "not-cleanly" in l]
+reports = [f for f in glob.glob(os.path.join(HOME, ".cache/hyprland/hyprlandCrashReport*.txt")) if _t.time() - os.path.getmtime(f) < 3 * 86400]
+cores = [l for l in run("coredumpctl", "list", "--no-pager", "--since", "3 days ago").stdout.splitlines() if "Hyprland" in l or "/qs" in l or "quickshell" in l.lower()]
+trail = os.path.join(HOME, ".cache/hypr-trail/events.log")
+if exits or reports or cores:
+    when = (exits[-1].split(" virajnalbalwar")[0] if exits else (os.path.basename(reports[-1]) if reports else cores[-1][:24]))
+    fail("Hyprland / shell crashed recently", f"{len(exits)} abnormal exit(s) this boot, {len(reports)} crash report(s), {len(cores)} core dump(s); last: {when}",
+         "read the events leading up to it: tail -40 ~/.cache/hypr-trail/events.log  (reports: ~/.cache/hyprland/, cores: coredumpctl)")
+    if os.path.exists(trail):
+        lines = open(trail, errors="replace").read().splitlines()
+        cut = [i for i, l in enumerate(lines) if "Hyprland went away" in l or "trail started" in l]
+        tail = lines[max(0, (cut[-2] if len(cut) > 1 else len(lines)) - 12):(cut[-2] + 1 if len(cut) > 1 else len(lines))]
+        for l in tail[-12:]:
+            results.append(("INFO", "   " + l, "", ""))
+else:
+    ok("No recent Hyprland / shell crashes")
+running = run("pgrep", "-f", "hypr/scripts/crash-trail").returncode == 0
+(ok if running else warn)("Crash trail recorder", "recording Hyprland events" if running else "not running",
+                          "" if running else "it starts with Hyprland (modules/autostart.lua); run scripts/crash-trail to start it now")
+
 # ── tools the features call ────────────────────────────────────────────────────
 tools = {
     "wallust": "colors from wallpapers", "awww": "wallpaper transitions", "hyprshot": "screenshots", "grim": "screenshots",
@@ -120,12 +142,15 @@ ahead = run("git", "-C", QS, "rev-list", "--count", "@{u}..HEAD").stdout.strip()
                                          "git push" if ahead not in ("", "0") else "")
 
 # ── report ─────────────────────────────────────────────────────────────────────
-col = {"OK": "\033[32m", "WARN": "\033[33m", "FAIL": "\033[31m"}
+col = {"OK": "\033[32m", "WARN": "\033[33m", "FAIL": "\033[31m", "INFO": "\033[90m"}
 bad = 0
 for level, name, detail, hint in results:
-    if level != "OK":
+    if level not in ("OK", "INFO"):
         bad += 1
     if quiet and level == "OK":
+        continue
+    if level == "INFO":
+        print(f"{col[level]}{name}\033[0m")
         continue
     line = f"{col[level]}{level:<4}\033[0m  {name}" + (f"  - {detail}" if detail else "")
     print(line)
