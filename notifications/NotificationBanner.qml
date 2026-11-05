@@ -14,8 +14,14 @@ Item {
 
     readonly property var n: NotificationState.banner
     readonly property bool critical: n !== null && n.urgency === NotificationUrgency.Critical
-    readonly property bool hasActions: n !== null && n.actions.length > 0
-    readonly property int wantedHeight: 92 + (hasActions ? 46 : 0)
+    // what is shown, in reading order: sender / subject, the message, then the small stuff
+    readonly property var fmt: content !== null ? NotificationFormat.format(content) : null
+    // a browser's own "Settings" button on every web notification is just noise
+    readonly property var shownActions: content === null ? [] : content.actions.filter(function(a) {
+        return a.identifier !== "default" && !(fmt && fmt.plain && /^settings$/i.test(a.text))
+    })
+    readonly property bool hasActions: n !== null && shownActions.length > 0
+    readonly property int wantedHeight: 112 + (hasActions ? 44 : 0)
     readonly property int wantedWidth: 600
 
     // keep the last notification's content while the island is collapsing
@@ -62,9 +68,11 @@ Item {
 
             Image {
                 id: iconImage
-                anchors { fill: parent; margins: banner.content && banner.content.image !== "" ? 0 : 7 }
-                source: banner.iconSource(banner.content)
-                fillMode: banner.content && banner.content.image !== "" ? Image.PreserveAspectCrop : Image.PreserveAspectFit
+                anchors { fill: parent; margins: (!iconImage.siteLogo && banner.content && banner.content.image !== "") ? 0 : 7 }
+                // a known site's own logo (WhatsApp, Outlook...) beats the generic picture the browser sends
+                readonly property bool siteLogo: banner.fmt !== null && banner.fmt.icon !== ""
+                source: siteLogo ? banner.fmt.icon : banner.iconSource(banner.content)
+                fillMode: !siteLogo && banner.content && banner.content.image !== "" ? Image.PreserveAspectCrop : Image.PreserveAspectFit
                 asynchronous: true
                 smooth: true
                 visible: status === Image.Ready
@@ -80,14 +88,14 @@ Item {
         }
     }
 
-    // text
+    // text: small label (app / site · chat), then the sender or subject, then the message
     Column {
-        anchors { left: iconBox.right; leftMargin: 16; right: closeButton.left; rightMargin: 10; top: iconBox.top }
-        spacing: 2
+        anchors { left: iconBox.right; leftMargin: 16; right: closeButton.left; rightMargin: 12; top: iconBox.top; topMargin: -2 }
+        spacing: 3
 
         Text {
             width: parent.width
-            text: banner.content ? banner.content.appName : ""
+            text: banner.fmt ? banner.fmt.label : ""
             color: Colors.grey2
             elide: Text.ElideRight
             font { pixelSize: 10; weight: Font.Medium; capitalization: Font.AllUppercase; letterSpacing: 0.6 }
@@ -95,23 +103,25 @@ Item {
 
         Text {
             width: parent.width
-            text: banner.content ? banner.content.summary : ""
+            text: banner.fmt ? banner.fmt.title : ""
             color: Colors.fg
             elide: Text.ElideRight
+            maximumLineCount: 1
             font { pixelSize: 15; weight: Font.DemiBold }
         }
 
         Text {
             width: parent.width
             visible: text !== ""
-            text: banner.content ? banner.content.body : ""
-            textFormat: Text.StyledText
+            text: banner.fmt ? banner.fmt.body : ""
+            textFormat: banner.fmt && banner.fmt.plain ? Text.PlainText : Text.StyledText
             color: Colors.fg
-            opacity: 0.7
+            opacity: 0.8
             maximumLineCount: 2
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
-            font.pixelSize: 12
+            lineHeight: 1.1
+            font.pixelSize: 13
             onLinkActivated: link => Qt.openUrlExternally(link)
         }
     }
@@ -148,16 +158,16 @@ Item {
     Row {
         id: actionRow
         visible: banner.hasActions
-        anchors { left: iconBox.right; leftMargin: 16; bottom: parent.bottom; bottomMargin: 16 }
+        anchors { left: iconBox.right; leftMargin: 16; bottom: parent.bottom; bottomMargin: 22 }
         spacing: 8
 
         Repeater {
-            model: banner.content ? banner.content.actions : []
+            model: banner.shownActions
 
             delegate: Rectangle {
                 required property var modelData
 
-                visible: modelData.identifier !== "default"
+                visible: true
                 width: visible ? Math.max(72, actionLabel.implicitWidth + 28) : 0
                 height: 30
                 radius: 15
@@ -188,7 +198,7 @@ Item {
     // time-left bar along the bottom edge (not for critical, which stays)
     Rectangle {
         id: timeBar
-        anchors { left: parent.left; bottom: parent.bottom; leftMargin: 34; bottomMargin: 8 }
+        anchors { left: parent.left; bottom: parent.bottom; leftMargin: 34; bottomMargin: 9 }
         height: 3
         radius: 1.5
         color: Colors.alpha(Colors.colBlue, 0.55)
