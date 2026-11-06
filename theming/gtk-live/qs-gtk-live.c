@@ -13,6 +13,7 @@
 #define _GNU_SOURCE
 #include <gio/gio.h>
 #include <dlfcn.h>
+#include <stdio.h>
 #include <string.h>
 
 #define USER_PRIORITY_PLUS_ONE 801               /* GTK_STYLE_PROVIDER_PRIORITY_USER (800) + 1 */
@@ -36,26 +37,169 @@ sym (const char *name)
   return dlsym (RTLD_DEFAULT, name);
 }
 
-static void
-load_css (void)
+/* ── fading between two themes ──────────────────────────────────────────────────────────────────────────────────────────
+ * GTK restyles instantly when a provider reloads (CSS transitions only run for state changes). To make a theme switch
+ * glide instead, we step the @define-color values from the old to the new ones ourselves, a dozen reloads over ~0.4 s.
+ * Only "@define-color name #RRGGBB;" lines are interpolated; everything else in gtk.css is taken as is. */
+#define FADE_STEPS 16
+#define FADE_MS 30
+
+static GHashTable *shown = NULL;                 /* name -> guint 0xRRGGBB currently on screen */
+static GHashTable *from_colors = NULL;
+static GHashTable *to_colors = NULL;
+static char *to_text = NULL;
+static int fade_step = 0;
+static guint fade_id = 0;
+
+static GHashTable *
+parse_colors (const char *text)
 {
-  char *text = NULL;
+  GHashTable *t = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  const char *p = text;
 
-  if (!g_file_get_contents (css_path, &text, NULL, NULL))
-    text = g_strdup ("");                        /* file gone: no overrides */
+  while ((p = strstr (p, "@define-color ")) != NULL)
+    {
+      char name[96];
+      unsigned int rgb;
 
+      if (sscanf (p, "@define-color %95s #%6x;", name, &rgb) == 2)
+        g_hash_table_insert (t, g_strdup (name), GUINT_TO_POINTER (rgb | 0x1000000));   /* bit 24 marks "present" */
+      p += 14;
+    }
+  return t;
+}
+
+static guint
+mix_rgb (guint a, guint b, double t)
+{
+  guint out = 0;
+  int shift;
+
+  for (shift = 16; shift >= 0; shift -= 8)
+    {
+      double ca = (a >> shift) & 0xff, cb = (b >> shift) & 0xff;
+      out |= ((guint) (ca + (cb - ca) * t + 0.5) & 0xff) << shift;
+    }
+  return out;
+}
+
+/* the new gtk.css with every @define-color value replaced by the mix at t */
+static char *
+text_at (double t)
+{
+  GString *out = g_string_new (NULL);
+  const char *p = to_text;
+
+  while (*p)
+    {
+      const char *eol = strchr (p, '\n');
+      gsize len = eol ? (gsize) (eol - p) : strlen (p);
+      char name[96];
+      unsigned int rgb;
+
+      if (strncmp (p, "@define-color ", 14) == 0 && sscanf (p, "@define-color %95s #%6x;", name, &rgb) == 2
+          && g_hash_table_contains (from_colors, name))
+        {
+          guint from = GPOINTER_TO_UINT (g_hash_table_lookup (from_colors, name)) & 0xffffff;
+          g_string_append_printf (out, "@define-color %s #%06X;", name, mix_rgb (from, rgb, t));
+        }
+      else
+        g_string_append_len (out, p, len);
+      g_string_append_c (out, '\n');
+      p += len + (eol ? 1 : 0);
+    }
+  return g_string_free (out, FALSE);
+}
+
+static void
+apply_text (const char *text)
+{
   if (gtk_major == 4)
     ((fn_load4) sym ("gtk_css_provider_load_from_string")) (provider, text);
   else
     ((fn_load3) sym ("gtk_css_provider_load_from_data")) (provider, text, -1, NULL);
+}
+
+static gboolean
+fade_tick (gpointer data)
+{
+  double lin = (double) ++fade_step / FADE_STEPS;
+  double t = 1.0 - (1.0 - lin) * (1.0 - lin) * (1.0 - lin);        /* ease-out */
+  char *text;
+
+  if (fade_step >= FADE_STEPS)
+    {
+      apply_text (to_text);
+      g_clear_pointer (&shown, g_hash_table_destroy);
+      shown = to_colors;
+      to_colors = NULL;
+      g_clear_pointer (&from_colors, g_hash_table_destroy);
+      fade_id = 0;
+      return G_SOURCE_REMOVE;
+    }
+
+  text = text_at (t);
+  apply_text (text);
   g_free (text);
+  return G_SOURCE_CONTINUE;
+}
+
+static void
+fade_to (char *new_text)
+{
+  GHashTable *target = parse_colors (new_text);
+
+  if (fade_id)
+    {                                            /* interrupted mid-fade: carry on from what is on screen now */
+      double lin = (double) fade_step / FADE_STEPS;
+      double t = 1.0 - (1.0 - lin) * (1.0 - lin) * (1.0 - lin);
+      GHashTableIter it;
+      gpointer k, v;
+      GHashTable *now = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+
+      g_hash_table_iter_init (&it, to_colors);
+      while (g_hash_table_iter_next (&it, &k, &v))
+        {
+          guint to_rgb = GPOINTER_TO_UINT (v) & 0xffffff;
+          guint from_rgb = from_colors && g_hash_table_contains (from_colors, k)
+                             ? GPOINTER_TO_UINT (g_hash_table_lookup (from_colors, k)) & 0xffffff : to_rgb;
+          g_hash_table_insert (now, g_strdup (k), GUINT_TO_POINTER (mix_rgb (from_rgb, to_rgb, t) | 0x1000000));
+        }
+      g_source_remove (fade_id);
+      fade_id = 0;
+      g_clear_pointer (&from_colors, g_hash_table_destroy);
+      g_clear_pointer (&to_colors, g_hash_table_destroy);
+      g_clear_pointer (&shown, g_hash_table_destroy);
+      shown = now;
+    }
+
+  g_free (to_text);
+  to_text = new_text;
+
+  if (shown == NULL || g_hash_table_size (shown) == 0)
+    {                                            /* first load: nothing to fade from */
+      apply_text (to_text);
+      g_clear_pointer (&shown, g_hash_table_destroy);
+      shown = target;
+      return;
+    }
+
+  from_colors = shown;
+  shown = NULL;
+  to_colors = target;
+  fade_step = 0;
+  fade_id = g_timeout_add (FADE_MS, fade_tick, NULL);
 }
 
 static gboolean
 reload_cb (gpointer data)
 {
+  char *text = NULL;
+
   reload_id = 0;
-  load_css ();
+  if (!g_file_get_contents (css_path, &text, NULL, NULL))
+    text = g_strdup ("");
+  fade_to (text);
   return G_SOURCE_REMOVE;
 }
 
@@ -103,7 +247,12 @@ try_start (gpointer data)
 
   css_path = g_build_filename (g_get_user_config_dir (), gtk_major == 4 ? "gtk-4.0" : "gtk-3.0", "gtk.css", NULL);
   provider = ((fn_ptr_void) sym ("gtk_css_provider_new")) ();
-  load_css ();
+  {
+    char *first = NULL;
+    if (!g_file_get_contents (css_path, &first, NULL, NULL))
+      first = g_strdup ("");
+    fade_to (first);                             /* first load: applied at once, and remembered for the next fade */
+  }
 
   if (gtk_major == 4)
     ((fn_add4) sym ("gtk_style_context_add_provider_for_display")) (display, provider, USER_PRIORITY_PLUS_ONE);

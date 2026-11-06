@@ -74,17 +74,10 @@ Singleton {
         queue = queue.filter(function(q) { return q[0] !== args[0] }).concat([args])
         if (!applyProcess.running) runNext()
     }
-    // a wallpaper pick recolours the shell too, but only theme changes get the colour ripple (the picture has its own
-    // grow-from-the-notch transition)
-    property bool rippleOff: false
-    Timer { id: rippleOffTimer; interval: 1500; onTriggered: root.rippleOff = false }
-
     function runNext() {
         if (queue.length === 0) return
         var a = queue[0]
         queue = queue.slice(1)
-        root.rippleOff = a[0] === "wallpaper"
-        rippleOffTimer.stop()
         applyProcess.command = [root.bin].concat(a)
         applyProcess.running = true
     }
@@ -145,7 +138,7 @@ Singleton {
 
     Process {
         id: applyProcess
-        onExited: { Colors.reload(); root.refreshStatus(); if (root.rippleOff) rippleOffTimer.restart(); root.runNext() }
+        onExited: { Colors.reload(); root.refreshStatus(); root.runNext() }
     }
 
     Process {
