@@ -21,7 +21,7 @@ Wallpapers are read from `~/Pictures/Hyprland-Wallpapers` and `~/Pictures/Wallpa
 Apps that follow the colors, and how:
 - Live, instantly: the shell (notch, control center, lock screen), kitty and every open terminal, Hyprland borders, cava,
   **Neovim** (every running instance, via its socket), **Zed** (select the "Wallust" theme once).
-- On next start: GTK3/GTK4/libadwaita apps (Nautilus, Thunar...) - GTK has no way to reload CSS in a running app.
+- Live, after one setup (`theming/gtk-live/install.sh`): **GTK3 / GTK4 / libadwaita apps** (Nautilus, Thunar, Text Editor...). A GIO module loaded into each GTK app watches `gtk.css` and reloads it; GTK is never patched. Apps already open when you install need one restart; Flatpaks can't see it.
 - After a one-time setup: **Spotify** (`theming/extras/spotify-setup.sh`, fades live) and **Chrome** (`theming/extras/chrome-setup.sh`, live via a browser policy; Chrome waits ~5 s after the last change before applying it).
 - Generated, not yet used: hyprlock color variables (the real lock screen is `lockscreen/`, in QML).
 Each app is a small file in `bin/qs_apps/`; add one to `MODULES` in `bin/qs_apps/__init__.py`. Retired Waybar/swaync/Rofi

@@ -131,6 +131,13 @@ chrome = "/etc/opt/chrome/policies/managed"
 spice = os.path.join(HOME, ".local/bin/spicetify")
 (ok if os.access(spice, os.X_OK) else warn)("Spotify live theming", "spicetify installed" if os.access(spice, os.X_OK) else "not set up",
                                           "" if os.access(spice, os.X_OK) else f"{QS}/theming/extras/spotify-setup.sh")
+gtk_so = os.path.join(HOME, ".local/lib/qs-gtk-live/libqs-gtk-live.so")
+gtk_env = "qs-gtk-live" in open(os.path.join(HOME, ".config/uwsm/env"), errors="replace").read() if os.path.exists(os.path.join(HOME, ".config/uwsm/env")) else False
+if os.path.exists(gtk_so) and gtk_env:
+    ok("GTK3/GTK4 live theming", "module installed and enabled for the session")
+else:
+    warn("GTK3/GTK4 live theming", "not set up" if not os.path.exists(gtk_so) else "installed but not enabled",
+         f"{QS}/theming/gtk-live/install.sh")
 nv = glob.glob(os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/run/user/1000"), "nvim.*.0"))
 ok("Neovim live theming", f"{len(nv)} running instance(s) will follow" if nv else "applies when nvim starts")
 
