@@ -75,8 +75,12 @@ Singleton {
         onTriggered: root.popup = false
     }
 
-    // the layout of the focused workspace (no Hyprland event fires when it changes,
-    // so a cheap poll keeps it honest)
+    // the layout of the focused workspace. No Hyprland event fires when it changes, so the SUPER+SHIFT+L bind
+    // tells us (`qs ipc call workspaces layout`); the slow timer only covers changes made some other way.
+    IpcHandler {
+        target: "workspaces"
+        function layout(): void { layoutProcess.running = true }
+    }
     Process {
         id: layoutProcess
         command: ["hyprctl", "activeworkspace", "-j"]
@@ -92,7 +96,7 @@ Singleton {
     }
 
     Timer {
-        interval: 1200
+        interval: 15000
         repeat: true
         running: true
         triggeredOnStart: true

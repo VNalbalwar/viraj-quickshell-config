@@ -104,28 +104,28 @@ Singleton {
             Quickshell.execDetached(["pkill", "-INT", "-x", root.recorder])
     }
 
+    // one `pgrep` finds any recorder; its age is only looked up when one first appears (the counter runs by itself)
     Process {
         id: recordPoll
-        command: ["sh", "-c",
-            "for p in " + root.recorders.join(" ") + "; do pid=$(pgrep -x \"$p\" | head -1); " +
-            "if [ -n \"$pid\" ]; then echo \"$p $(ps -o etimes= -p \"$pid\" | tr -d ' ')\"; exit 0; fi; done; echo none"]
-        stdout: SplitParser {
-            onRead: data => {
-                var parts = data.trim().split(" ")
-                if (parts[0] === "none" || parts[0] === "") {
-                    root.recording = false
-                    root.recorder = ""
-                } else {
+        command: ["pgrep", "-o", "-l", "-x", "wf-recorder|wl-screenrec|gpu-screen-reco|obs"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var parts = text.trim().split(" ")
+                if (parts.length < 2) { root.recording = false; root.recorder = ""; return }
+                var name = parts[1] === "gpu-screen-reco" ? "gpu-screen-recorder" : parts[1]
+                if (!root.recording || root.recorder !== name) {
+                    root.recorder = name
                     root.recording = true
-                    root.recorder = parts[0]
-                    root.recordSecs = parseInt(parts[1]) || 0
+                    ageProcess.command = ["ps", "-o", "etimes=", "-p", parts[0]]
+                    ageProcess.running = true
                 }
             }
         }
     }
+    Process { id: ageProcess; stdout: StdioCollector { onStreamFinished: root.recordSecs = parseInt(text.trim()) || 0 } }
 
     Timer {
-        interval: 2000
+        interval: 3000
         repeat: true
         running: true
         triggeredOnStart: true

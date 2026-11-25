@@ -100,6 +100,7 @@ Item {
         id: bg
         anchors.fill: parent
         source: "file:///home/viraj/.cache/wallpaper_frame.png"
+        sourceSize.width: 1280            // it is blurred heavily: a smaller texture looks identical and is far lighter
         fillMode: Image.PreserveAspectCrop
         cache: false
         asynchronous: true

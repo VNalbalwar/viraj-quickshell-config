@@ -113,6 +113,7 @@ Item {
                 Image {
                     anchors.fill: parent
                     source: row.d.art
+                    sourceSize.width: 128
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     visible: status === Image.Ready

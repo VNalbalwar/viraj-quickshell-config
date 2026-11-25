@@ -128,13 +128,15 @@ Singleton {
         }
     }
 
+    // every 4 s while you can see it or the hotspot is on (client count); otherwise a lazy check once a minute
     Timer {
-        interval: 4000
+        interval: (ControlState.visible || root.active) ? 4000 : 60000
         repeat: true
         running: true
         triggeredOnStart: true
         onTriggered: root.refresh()
     }
+    Connections { target: ControlState; function onVisibleChanged() { if (ControlState.visible) root.refresh() } }
 
     // ── persisted name + password (generated once, kept out of the git repo) ──
     function save() {

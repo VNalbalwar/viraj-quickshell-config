@@ -156,11 +156,16 @@ Singleton {
         }
     }
 
-    Timer {
-        interval: 1500
-        repeat: true
+    // `pactl subscribe` reports every sound-stream change, so the list is re-read only when something happened
+    Process {
+        id: subscribe
         running: true
-        triggeredOnStart: true
-        onTriggered: root.refresh()
+        command: ["setpriv", "--pdeathsig", "TERM", "pactl", "subscribe"]
+        stdout: SplitParser { onRead: data => { if (data.indexOf("sink-input") !== -1) streamSettle.start() } }
+        onExited: subscribeRestart.start()
     }
+    Timer { id: subscribeRestart; interval: 3000; onTriggered: subscribe.running = true }
+    Timer { id: streamSettle; interval: 250; onTriggered: root.refresh() }
+
+    Timer { interval: 30000; repeat: true; running: true; triggeredOnStart: true; onTriggered: root.refresh() }   // safety net
 }

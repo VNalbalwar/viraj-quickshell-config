@@ -731,6 +731,7 @@ PanelWindow {
                     Image {
                         anchors.fill: parent
                         source: shownPlayer && shownPlayer.trackArtUrl ? shownPlayer.trackArtUrl : ""
+                        sourceSize.width: 240
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
                         cache: true

@@ -2,6 +2,7 @@ pragma Singleton
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.UPower
+import Quickshell.Services.Pipewire
 import QtQuick
 
 Singleton {
@@ -66,9 +67,14 @@ Singleton {
             root.batteryState = "unknown"
     }
 
-    function updateLocks() { lockProcess.running = true }
+    function handleLocks(newCaps, newNum) {
+        if (!root.lockInitialized) { root.capsLock = newCaps; root.numLock = newNum; root.lockInitialized = true; return }
+        if (newCaps !== root.capsLock) { root.capsLock = newCaps; root.showLock("caps") }
+        if (newNum !== root.numLock) { root.numLock = newNum; root.showLock("num") }
+    }
 
     function normalizeAudioOutput(id, description) {
+        description = description.replace(/^\d+ Series Chipset Family HD Audio( Controller)?\s*/, "")     // "…HD Audio Headphones" -> "Headphones"
         var lower = description.toLowerCase()
         root.audioOutputId = id
         if (lower.indexOf("hdmi") !== -1 || lower.indexOf("displayport") !== -1) {
@@ -86,7 +92,12 @@ Singleton {
         }
     }
 
-    function updateAudioOutput() { if (!audioOutputProcess.running) audioOutputProcess.running = true }
+    // PipeWire announces a new default output itself; no need to ask `wpctl status` twice a second
+    readonly property var defaultSink: Pipewire.defaultAudioSink
+    readonly property string defaultSinkName: defaultSink && defaultSink.ready ? (defaultSink.description || defaultSink.nickname || defaultSink.name) : ""
+    onDefaultSinkNameChanged: updateAudioOutput()
+    function updateAudioOutput() { if (root.defaultSinkName !== "") root.handleAudioOutput(String(root.defaultSink.id), root.defaultSinkName) }
+    PwObjectTracker { objects: root.defaultSink ? [root.defaultSink] : [] }
     function handleAudioOutput(id, description) {
         if (!id || !description) return
         var changed = root.audioOutputInitialized && root.audioOutputId !== id
@@ -95,7 +106,7 @@ Singleton {
         if (changed) root.showAudioOutput()
     }
 
-    function updatePerformanceProfile() { if (!performanceProcess.running) performanceProcess.running = true }
+    function updatePerformanceProfile() { if (!performanceProcess.running) performanceProcess.running = true }   // on demand only
     function handlePerformanceProfile(profile) {
         profile = profile.trim()
         if (!profile) return
@@ -130,7 +141,9 @@ Singleton {
         if (changed) root.showFanMode()
     }
 
-    function updateWifi() { if (!wifiProcess.running) wifiProcess.running = true }
+    property bool wifiStale: false
+    signal networkChanged()                      // anything NetworkManager reports (also used by the weather chip)
+    function updateWifi() { if (!wifiProcess.running) wifiProcess.running = true; else wifiStale = true }
     function handleWifi(data) {
         var parts = data.trim().split("|")
         if (parts.length < 3) return
@@ -165,7 +178,7 @@ Singleton {
     function toggle() { if (root.visible) hide(); else show() }
 
     Component.onCompleted: {
-        readBrightness(); updateBattery(); updateLocks(); updateAudioOutput(); updatePerformanceProfile(); updateFanMode(); updateWifi()
+        readBrightness(); updateBattery(); updateAudioOutput(); updateWifi()
     }
 
     Connections {
@@ -177,7 +190,6 @@ Singleton {
     Process { id: brightnessProcess; command: ["brightnessctl", "-m"]; stdout: SplitParser { onRead: data => { var parts = data.trim().split(","); if (parts.length >= 4) { var value = parseInt(parts[3].replace("%", "")); if (!isNaN(value)) root.brightness = value } } } }
     Process { id: volumeProcess; command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]; stdout: SplitParser { onRead: data => { var output = data.trim(); var match = output.match(/Volume:\s*([0-9.]+)/); if (match) { var value = parseFloat(match[1]); if (!isNaN(value)) root.volume = Math.round(value * 100) }; root.muted = output.indexOf("[MUTED]") !== -1 } } }
     Process { id: micMuteProcess; command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"]; stdout: SplitParser { onRead: data => root.micMuted = data.trim().indexOf("[MUTED]") !== -1 } }
-    Process { id: audioOutputProcess; command: ["sh", "-c", "wpctl status | sed -n '/Sinks:/,/Sources:/p' | grep '^.*\\*' | head -n1"]; stdout: SplitParser { onRead: data => { var line = data.trim(); if (!line) return; var marker = line.indexOf("."); var star = line.indexOf("*"); var vol = line.indexOf("[vol:"); if (star === -1 || marker === -1 || vol === -1) return; root.handleAudioOutput(line.substring(star + 1, marker).trim(), line.substring(marker + 1, vol).trim()) } } }
     Process { id: performanceProcess; command: ["cat", "/sys/firmware/acpi/platform_profile"]; stdout: SplitParser { onRead: data => root.handlePerformanceProfile(data) } }
     Process { id: fanProcess; command: ["cat", "/sys/module/linuwu_sense/drivers/platform:acer-wmi/acer-wmi/predator_sense/fan_speed"]; stdout: SplitParser { onRead: data => root.handleFanSpeed(data) } }
 
@@ -185,15 +197,38 @@ Singleton {
         id: wifiProcess
         command: ["sh", "-c", "radio=$(nmcli -t radio wifi); dev=$(nmcli -t -f DEVICE,TYPE dev | awk -F: '$2==\"wifi\"{print $1; exit}'); if [ \"$radio\" = \"enabled\" ] && [ -n \"$dev\" ]; then state=$(nmcli -t -f GENERAL.STATE dev show \"$dev\" | sed 's/^GENERAL.STATE://'); conn=$(nmcli -t -f GENERAL.CONNECTION dev show \"$dev\" | sed 's/^GENERAL.CONNECTION://'); printf 'enabled|%s|%s\\n' \"$state\" \"$conn\"; else printf '%s|0 (disconnected)|\\n' \"$radio\"; fi"]
         stdout: SplitParser { onRead: data => root.handleWifi(data) }
+        onExited: if (root.wifiStale) { root.wifiStale = false; root.updateWifi() }
     }
 
-    Process { id: lockProcess; command: ["sh", "-c", "hyprctl devices -j | jq -c '.keyboards[] | select(.main == true) | {capsLock, numLock}'"]; stdout: SplitParser { onRead: data => { try { var keyboard = JSON.parse(data.trim()); var newCaps = !!keyboard.capsLock; var newNum = !!keyboard.numLock; if (!root.lockInitialized) { root.capsLock = newCaps; root.numLock = newNum; root.lockInitialized = true; return } if (newCaps !== root.capsLock) { root.capsLock = newCaps; root.showLock("caps") } if (newNum !== root.numLock) { root.numLock = newNum; root.showLock("num") } } catch (error) { console.log("Failed to parse keyboard lock state:", error) } } } }
+    // Caps / Num Lock, power profile, fan: one long-running watcher that prints only changes
+    Process {
+        id: hwWatch
+        running: true
+        command: ["setpriv", "--pdeathsig", "TERM", Quickshell.shellDir + "/osd/hw-watch.sh"]
+        stdout: SplitParser {
+            onRead: data => {
+                var p = data.trim().split(" ")
+                if (p[0] === "locks") root.handleLocks(p[1] === "1", p[2] === "1")
+                else if (p[0] === "profile") root.handlePerformanceProfile(p[1])
+                else if (p[0] === "fan") root.handleFanSpeed(p[1])
+            }
+        }
+        onExited: hwRestart.start()
+    }
+    Timer { id: hwRestart; interval: 2000; onTriggered: hwWatch.running = true }
 
-    Timer { id: lockTimer; interval: 250; repeat: true; running: true; onTriggered: root.updateLocks() }
-    Timer { id: audioOutputTimer; interval: 500; repeat: true; running: true; onTriggered: root.updateAudioOutput() }
-    Timer { id: performanceTimer; interval: 500; repeat: true; running: true; onTriggered: root.updatePerformanceProfile() }
-    Timer { id: fanTimer; interval: 500; repeat: true; running: true; onTriggered: root.updateFanMode() }
-    Timer { id: wifiTimer; interval: 1000; repeat: true; running: true; onTriggered: root.updateWifi() }
+    // Wi-Fi: react to NetworkManager events (a burst of them becomes one query)
+    Process {
+        id: netMonitor
+        running: true
+        command: ["setpriv", "--pdeathsig", "TERM", "nmcli", "monitor"]
+        stdout: SplitParser { onRead: data => netSettle.restart() }
+        onExited: netRestart.start()
+    }
+    Timer { id: netRestart; interval: 5000; onTriggered: netMonitor.running = true }
+    Timer { id: netSettle; interval: 350; onTriggered: { root.updateWifi(); root.networkChanged() } }
+    Timer { interval: 60000; repeat: true; running: true; onTriggered: root.updateWifi() }      // safety net
+
     Timer { id: hideTimer; interval: 1800; repeat: false; onTriggered: root.visible = false }
 
     IpcHandler {

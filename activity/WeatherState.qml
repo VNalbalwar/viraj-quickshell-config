@@ -2,6 +2,7 @@ pragma Singleton
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "../osd"
 
 // Current weather for the notch's hover panel (Open-Meteo, no account or key).
 // Your rough location comes from your public IP once a day (cached), so nothing needs configuring.
@@ -88,7 +89,8 @@ Singleton {
             }
         }
     }
-    Timer { interval: 10000; repeat: true; running: true; onTriggered: netCheck.running = true }
+    Connections { target: OsdState; function onNetworkChanged() { netCheck.running = true } }
+    Timer { interval: 120000; repeat: true; running: true; onTriggered: netCheck.running = true }     // safety net
 
     // every 15 minutes normally; every minute while we have no reading (offline), so it reappears quickly
     Timer {

@@ -39,6 +39,7 @@ Item {
             Image {
                 anchors.fill: parent
                 source: activity.player && activity.player.trackArtUrl ? activity.player.trackArtUrl : ""
+                sourceSize.width: 96
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 visible: status === Image.Ready

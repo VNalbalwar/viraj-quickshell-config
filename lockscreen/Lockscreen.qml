@@ -67,15 +67,22 @@ PanelWindow {
         onTriggered: lock.reallyVisible = false
     }
 
-    // The shared lock UI, faded in/out as one.
-    LockContent {
+    // The shared lock UI, faded in/out as one. Built only while the test overlay is on screen: kept alive all the
+    // time it held a full-screen wallpaper texture and blur buffers in memory for a screen nobody was seeing.
+    Loader {
         anchors.fill: parent
-        active: LockState.demoActive
-        testMode: true
+        active: lock.reallyVisible
+        sourceComponent: LockContent {
+            id: content
+            property bool shown: false
+            Component.onCompleted: shown = true
+            active: LockState.demoActive
+            testMode: true
 
-        opacity: LockState.demoActive ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation { duration: 320; easing.type: Motion.settle }
+            opacity: (shown && LockState.demoActive) ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation { duration: 320; easing.type: Motion.settle }
+            }
         }
     }
 }
